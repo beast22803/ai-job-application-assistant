@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<!-- saved from url=(0022)http://localhost:8000/ -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proposal Agent</title>
+  <meta name="description" content="AI-powered cover letter writer that self-improves your proposals.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com/">
+  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+  <link href="./Proposal Agent_files/css2" rel="stylesheet">
+
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       DESIGN TOKENS
+    ═══════════════════════════════════════════════════════════ */
+    :root {
+      --bg:         #0A0A0A;
+      --fg:         #FAFAFA;
+      --muted:      #1A1A1A;
+      --muted-fg:   #737373;
+      --accent:     #FF3D00;
+      --accent-fg:  #0A0A0A;
+      --border:     #262626;
+      --card:       #0F0F0F;
+
+      --font-sans: "Inter Tight", "Inter", system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+      --ease: cubic-bezier(0.25, 0, 0, 1);
+      --t:    150ms;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESET
+    ═══════════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    /* Grain texture overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E");
+      opacity: 0.018;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    ::selection { background: var(--accent); color: var(--accent-fg); }
+
+    /* ═══════════════════════════════════════════════════════════
+       LAYOUT SHELL
+    ═══════════════════════════════════════════════════════════ */
+    #app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100dvh;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════════════════ */
+    .site-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      line-height: 1;
+    }
+
+    .logo {
+      font-size: 1.375rem;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+      text-transform: uppercase;
+      color: var(--fg);
+    }
+
+    .logo-div {
+      color: var(--border);
+      font-weight: 300;
+      font-size: 1.2rem;
+    }
+
+    .logo-agent {
+      font-size: 1.375rem;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .thread-pill {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      white-space: nowrap;
+    }
+
+    .btn-new {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--fg);
+      background: none;
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: background var(--t) var(--ease), border-color var(--t) var(--ease), color var(--t) var(--ease);
+      white-space: nowrap;
+    }
+
+    .btn-new:hover {
+      background: var(--fg);
+      border-color: var(--fg);
+      color: var(--bg);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       CHAT AREA
+    ═══════════════════════════════════════════════════════════ */
+    .chat-scroll {
+      overflow-y: auto;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+
+    .chat-scroll::-webkit-scrollbar { width: 3px; }
+    .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+    .chat-scroll::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .messages {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 40px 32px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      min-height: 100%;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       EMPTY STATE
+    ═══════════════════════════════════════════════════════════ */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px 0;
+    }
+
+    .empty-headline {
+      font-size: clamp(2.75rem, 9vw, 5.5rem);
+      font-weight: 900;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      margin-bottom: 24px;
+    }
+
+    .empty-headline em {
+      font-style: normal;
+      color: var(--accent);
+    }
+
+    .empty-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .empty-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+    }
+
+    .empty-step-num {
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       MESSAGE ROWS
+    ═══════════════════════════════════════════════════════════ */
+    .msg {
+      padding: 28px 0;
+      border-bottom: 1px solid var(--border);
+      animation: fadeUp 0.25s var(--ease) both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Agent row */
+    .msg--agent {
+      padding-left: 20px;
+      border-left: 2px solid var(--accent);
+    }
+
+    /* User row */
+    .msg--user {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .msg-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .msg--agent .msg-label { color: var(--accent); }
+    .msg--user  .msg-label { color: var(--muted-fg); justify-content: flex-end; }
+
+    .msg-time {
+      font-size: 0.6rem;
+      letter-spacing: 0.04em;
+      color: var(--muted-fg);
+    }
+
+    .msg-body {
+      font-size: 0.9375rem;
+      line-height: 1.8;
+      color: var(--fg);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .msg--user .msg-body {
+      background: var(--muted);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      font-size: 0.875rem;
+      line-height: 1.65;
+      color: var(--muted-fg);
+      max-width: 88%;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       PROCESS LOG + COPY ACTIONS
+    ═══════════════════════════════════════════════════════════ */
+    .msg-footer {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .process-tag {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .process-dot {
+      width: 4px;
+      height: 4px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+
+    .btn-copy {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      background: none;
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: all var(--t) var(--ease);
+      margin-left: auto;
+    }
+
+    .btn-copy:hover { color: var(--fg); border-color: var(--fg); }
+
+    .btn-copy.--copied {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       LOADING STATE
+    ═══════════════════════════════════════════════════════════ */
+    .msg--loading {
+      padding-left: 20px;
+      border-left: 2px solid var(--accent);
+    }
+
+    .loading-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .l-step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--border);
+      transition: color 0.4s ease;
+    }
+
+    .l-step.--active { color: var(--fg); }
+    .l-step.--done   { color: var(--muted-fg); }
+
+    .l-step-pip {
+      width: 5px;
+      height: 5px;
+      background: currentColor;
+      flex-shrink: 0;
+      transition: background 0.4s ease;
+    }
+
+    .l-step.--active .l-step-pip {
+      background: var(--accent);
+      animation: blink 0.9s ease infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       INPUT AREA
+    ═══════════════════════════════════════════════════════════ */
+    .input-shell {
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .input-hint {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 10px 32px 0;
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      transition: color var(--t);
+    }
+
+    .input-row {
+      max-width: 760px;
+      margin: 0 auto;
+      display: flex;
+      gap: 14px;
+      align-items: flex-end;
+      padding: 10px 32px 22px;
+    }
+
+    /* Auto-sizing textarea via field-sizing (modern) with JS fallback */
+    #chat-input {
+      flex: 1;
+      background: var(--muted);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      font-family: var(--font-sans);
+      font-size: 0.9375rem;
+      line-height: 1.55;
+      padding: 13px 16px;
+      resize: none;
+      outline: none;
+      border-radius: 0;
+      min-height: 50px;
+      max-height: 200px;
+      overflow-y: auto;
+      transition: border-color var(--t) var(--ease);
+      /* Modern auto-resize */
+      field-sizing: content;
+    }
+
+    #chat-input::placeholder { color: var(--muted-fg); }
+    #chat-input:focus { border-color: var(--accent); }
+    #chat-input:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    #chat-input::-webkit-scrollbar { width: 3px; }
+    #chat-input::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .send-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: transparent;
+      border: 1px solid var(--accent);
+      padding: 0 22px;
+      height: 50px;
+      flex-shrink: 0;
+      cursor: pointer;
+      overflow: hidden;
+      position: relative;
+      transition: color var(--t) var(--ease);
+      white-space: nowrap;
+    }
+
+    .send-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--accent);
+      transform: scaleY(0);
+      transform-origin: bottom;
+      transition: transform 200ms var(--ease);
+    }
+
+    .send-btn:hover::before  { transform: scaleY(1); }
+    .send-btn:hover          { color: var(--accent-fg); }
+    .send-btn:active         { transform: translateY(1px); }
+
+    .send-btn > span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .send-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .send-btn:disabled::before { display: none; }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      .site-header    { padding: 14px 16px; }
+      .thread-pill    { display: none; }
+      .logo, .logo-agent, .logo-div { font-size: 1.1rem; }
+      .messages       { padding: 24px 16px 16px; }
+      .input-row      { padding: 8px 16px 18px; gap: 10px; }
+      .input-hint     { padding: 8px 16px 0; }
+      .msg--agent     { padding-left: 14px; }
+      .empty-headline { font-size: clamp(2rem, 12vw, 3rem); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       REDUCED MOTION
+    ═══════════════════════════════════════════════════════════ */
+    @media (prefers-reduced-motion: reduce) {
+      .msg           { animation: none; opacity: 1; }
+      .l-step-pip    { animation: none; }
+      .send-btn::before { transition: none; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══════════════════════ HEADER ══════════════════════ -->
+  <header class="site-header">
+    <div class="header-brand" aria-label="Proposal Agent">
+      <span class="logo">Proposal</span>
+      <span class="logo-div" aria-hidden="true">/</span>
+      <span class="logo-agent">Agent</span>
+    </div>
+    <div class="header-right">
+      <div class="thread-pill" id="thread-pill" aria-label="Session ID">SESSION_FBD871338C</div>
+      <button class="btn-new" id="btn-new" onclick="newSession()">＋ New session</button>
+    </div>
+  </header>
+
+  <!-- ══════════════════════ MESSAGES ══════════════════════ -->
+  <main class="chat-scroll" id="chat-scroll" aria-label="Conversation">
+    <div class="messages" id="messages" role="log" aria-live="polite">
+    <div class="msg msg--user">
+    <div class="msg-label">
+      <span class="msg-time">14:09</span>
+      You
+    </div>
+    <div class="msg-body">About Sim
+Sim.ai is the fastest-growing platform to build AI agent workflows. We're open source with 26k stars in the last 8 months.
+
+About the role
+About Sim
+Sim is building the leading platform for AI agents—enabling developers and enterprises to visually create, launch, and manage high-performing agents that automate the world’s workflows. Our mission is simple: agents will run the world, and Sim is the primary means by which that happens. We’re backed by world-class investors including Standard Capital, Paul Graham, Perplexity, SV Angel, and Y Combinator, and we’ve been open source from day one.
+
+We're a small, fast-moving team based in San Francisco, building together in person every day. 70,000+ developers use Sim; your work ships fast and impacts real users at scale. We believe in ownership, excellence, and ambitious builders shaping the future from the ground up.
+
+About the Role
+As a Software Engineer, Frontend at Sim, you'll own the development of our agent-building canvas and frontend platform. You’ll architect intuitive user experiences, build robust and high-performance UI components, and help define how thousands of developers create with Sim. Working with engineering, product, and design, you’ll deliver features from concept to production, directly shaping our product’s design, performance, and developer experience.
+
+What You'll Do
+Architect and develop key frontend systems, focusing on visual, interactive experiences that empower users to build and manage AI agents
+
+Lead the implementation of new features, UI components, and real-time interactions in a Next.js monorepo
+
+Ensure the frontend experience is performant, polished, and delightful at scale
+
+Set standards for front-end code, UI architecture, and design systems
+
+Collaborate with engineering, design, and product teams to deliver seamless developer workflows
+
+Extend our custom component library, and extend our existing design system
+
+Prototype and iterate rapidly, shipping high-impact improvements daily
+
+What We’re Looking For
+Deep experience in React and TypeScript
+
+Strong intuition for UI/UX design and developer experience
+
+Proven ability to build complex, interactive frontend applications (canvas editors, visual builders, collaborative tools, etc.)
+
+Understanding of frontend performance, animation, and real-time systems (WebSockets, CRDTs, etc.)
+
+High agency and ownership mentality—drive features from ideation to launch
+
+Experience with design systems, Next.js, and open-source contributions is a plus
+
+Why Sim
+Foundational impact shaping Sim’s product and frontend architecture
+
+Immediate scale: your work reaches 70,000+ developers
+
+World-class team and investors
+
+Open source culture with 26,000+ GitHub stars
+
+Competitive compensation and meaningful equity
+
+Comprehensive health insurance and relocation support
+
+Visa sponsorship available
+
+Equal Opportunity
+Sim is committed to creating an inclusive environment for all employees. We celebrate diversity and are committed to creating an inclusive environment for all team members. We do not discriminate on the basis of race, religion, color, national origin, gender, sexual orientation, age, marital status, veteran status, or disability status.
+
+Technology
+At Sim, our stack sits at the frontier of AI: multi-agent orchestration, MCPs, advanced LLM capabilities, browser agents, and more. We’re constantly working to translate the latest advances from AI research labs into a platform that builders can use to create powerful AI agents. This means solving challenging problems in orchestration, reliability, and scale while pushing the boundaries of what AI agents can actually do in real-world environments.</div></div><div class="msg msg--agent">
+    <div class="msg-label">
+      Agent
+      <span class="msg-time">14:09</span>
+    </div>
+    <div class="msg-body" id="body_1781179776072">Dear Hiring Manager,
+
+As a seasoned React and TypeScript developer, I'm excited to apply for the Software Engineer, Frontend role at Sim, where I can contribute to building the leading platform for AI agents that empower 70,000+ developers to create high-performing workflows.
+
+With expertise in building complex interactive frontend applications, including canvas editors and visual builders, I've developed a strong intuition for UI/UX design and developer experience. My hands-on experience with Next.js and open-source contributions has equipped me to architect intuitive user experiences, build robust and high-performance UI components, and extend the custom component library and existing design system.
+
+I'm particularly drawn to Sim's commitment to ownership, excellence, and ambitious builders shaping the future from the ground up. As someone who thrives in fast-paced environments, I appreciate the opportunity to collaborate with engineering, design, and product teams to deliver seamless developer workflows and drive features from ideation to launch. My experience working on high-impact projects has taught me to prototype rapidly, iterate continuously, and prioritize performance, polish, and delight at scale.
+
+I'm confident that my technical expertise, combined with my passion for innovation and ownership, make me a strong fit for Sim's team and mission to enable AI agents to run the world.</div>
+    <div class="msg-footer">
+      
+    <span class="process-tag">
+      <span class="process-dot" aria-hidden="true"></span>Iteration 1: self-analysis complete.
+    </span>
+      <button class="btn-copy" onclick="copyText(&#39;body_1781179776072&#39;, this)" aria-label="Copy letter">
+        ⎘ Copy
+      </button>
+    </div></div></div>
+  </main>
+
+  <!-- ══════════════════════ INPUT ══════════════════════ -->
+  <footer class="input-shell">
+    <p class="input-hint" id="input-hint" aria-live="polite">Ask for revisions — the agent remembers your full context</p>
+    <div class="input-row">
+      <textarea id="chat-input" placeholder="e.g. &quot;Make it shorter and mention my 5 years of React experience&quot;" aria-label="Message" rows="1" autocomplete="off" spellcheck="true"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()" aria-label="Send message">
+        <span>Send ↑</span>
+      </button>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+/* ═════════════════════════════════════════════════════════════
+   STATE
+═════════════════════════════════════════════════════════════ */
+const API = window.location.origin;
+let threadId       = null;
+let sessionStarted = false;
+let isLoading      = false;
+
+/* ═════════════════════════════════════════════════════════════
+   INIT
+═════════════════════════════════════════════════════════════ */
+async function init() {
+  await newSession();
+}
+
+async function newSession() {
+  if (isLoading) return;
+  try {
+    const r    = await fetch(`${API}/api/new-thread`);
+    const data = await r.json();
+    threadId       = data.thread_id;
+    sessionStarted = false;
+    updateThreadPill(threadId);
+    resetChat();
+  } catch {
+    threadId = 'session_' + Math.random().toString(36).slice(2, 12);
+    updateThreadPill(threadId);
+    resetChat();
+  }
+}
+
+function updateThreadPill(id) {
+  document.getElementById('thread-pill').textContent = id.toUpperCase();
+}
+
+function resetChat() {
+  document.getElementById('messages').innerHTML = `
+    <div class="empty-state" id="empty-state">
+      <h1 class="empty-headline">Write your<br><em>next win.</em></h1>
+      <div class="empty-steps" role="list">
+        <div class="empty-step" role="listitem">
+          <span class="empty-step-num">01</span>
+          Paste a job description to generate your cover letter
+        </div>
+        <div class="empty-step" role="listitem">
+          <span class="empty-step-num">02</span>
+          The agent drafts, self-critiques, and refines automatically
+        </div>
+        <div class="empty-step" role="listitem">
+          <span class="empty-step-num">03</span>
+          Ask for revisions — the agent remembers the full context
+        </div>
+      </div>
+    </div>`;
+
+  setHint('Paste a job description to begin');
+  const inp = document.getElementById('chat-input');
+  inp.placeholder = 'Paste job description here…';
+  inp.value = '';
+  syncHeight(inp);
+}
+
+/* ═════════════════════════════════════════════════════════════
+   SEND
+═════════════════════════════════════════════════════════════ */
+async function sendMessage() {
+  const inp = document.getElementById('chat-input');
+  const msg = inp.value.trim();
+  if (!msg || isLoading) return;
+
+  // Remove empty state on first message
+  document.getElementById('empty-state')?.remove();
+
+  const isFirst = !sessionStarted;
+
+  appendUserMsg(msg);
+  inp.value = '';
+  syncHeight(inp);
+
+  const loadEl = appendLoading(isFirst);
+  setLoading(true);
+
+  try {
+    const res = await fetch(`${API}/api/chat`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ thread_id: threadId, message: msg, is_first: isFirst }),
+    });
+
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(e.detail || 'Server error');
+    }
+
+    const data = await res.json();
+    sessionStarted = true;
+    loadEl.remove();
+    appendAgentMsg(data.draft, data.critique_history);
+
+    setHint('Ask for revisions — the agent remembers your full context');
+    inp.placeholder = 'e.g. "Make it shorter and mention my 5 years of React experience"';
+  } catch (err) {
+    loadEl.remove();
+    appendErrorMsg(err.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════
+   MESSAGE BUILDERS
+═════════════════════════════════════════════════════════════ */
+function now() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function appendUserMsg(text) {
+  const el = create('div', 'msg msg--user');
+  el.innerHTML = `
+    <div class="msg-label">
+      <span class="msg-time">${now()}</span>
+      You
+    </div>
+    <div class="msg-body">${esc(text)}</div>`;
+  attach(el);
+}
+
+function appendAgentMsg(draft, critiques = []) {
+  const bodyId  = 'body_' + Date.now();
+  const critiqueHtml = critiques.map(c => `
+    <span class="process-tag">
+      <span class="process-dot" aria-hidden="true"></span>${esc(c)}
+    </span>`).join('');
+
+  const el = create('div', 'msg msg--agent');
+  el.innerHTML = `
+    <div class="msg-label">
+      Agent
+      <span class="msg-time">${now()}</span>
+    </div>
+    <div class="msg-body" id="${bodyId}"></div>
+    <div class="msg-footer">
+      ${critiqueHtml}
+      <button class="btn-copy" onclick="copyText('${bodyId}', this)" aria-label="Copy letter">
+        ⎘ Copy
+      </button>
+    </div>`;
+  attach(el);
+
+  // Set text (no slow typewriter — draft can be 800+ chars)
+  document.getElementById(bodyId).textContent = draft;
+  scroll();
+}
+
+function appendLoading(isFirst) {
+  const steps = isFirst
+    ? ['Parsing job description', 'Drafting cover letter', 'Self-improving draft']
+    : ['Reading revision instruction', 'Applying changes precisely'];
+
+  const stepsHtml = steps.map((s, i) => `
+    <div class="l-step ${i === 0 ? '--active' : ''}" data-i="${i}">
+      <div class="l-step-pip" aria-hidden="true"></div>
+      ${s}
+    </div>`).join('');
+
+  const el = create('div', 'msg msg--loading');
+  el.innerHTML = `
+    <div class="msg-label">Agent</div>
+    <div class="loading-steps" role="status" aria-label="Generating…">${stepsHtml}</div>`;
+  attach(el);
+
+  // Advance steps on a realistic timer
+  const delays = isFirst ? [0, 9000, 20000] : [0, 5000];
+  const stepEls = el.querySelectorAll('.l-step');
+  steps.forEach((_, i) => {
+    if (i === 0) return;
+    setTimeout(() => {
+      stepEls[i - 1]?.classList.replace('--active', '--done');
+      stepEls[i]?.classList.add('--active');
+      scroll();
+    }, delays[i]);
+  });
+
+  return el;
+}
+
+function appendErrorMsg(detail) {
+  const el = create('div', 'msg msg--agent');
+  el.innerHTML = `
+    <div class="msg-label" style="color:var(--accent)">Error</div>
+    <div class="msg-body" style="color:var(--muted-fg);font-size:.875rem;">
+      Something went wrong — ${esc(detail)}<br><br>
+      Make sure the server is running and try again.
+    </div>`;
+  attach(el);
+}
+
+/* ═════════════════════════════════════════════════════════════
+   COPY
+═════════════════════════════════════════════════════════════ */
+async function copyText(id, btn) {
+  const text = document.getElementById(id)?.textContent ?? '';
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = '✓ Copied';
+    btn.classList.add('--copied');
+    setTimeout(() => {
+      btn.textContent = '⎘ Copy';
+      btn.classList.remove('--copied');
+    }, 2000);
+  } catch {
+    btn.textContent = 'Failed';
+    setTimeout(() => { btn.textContent = '⎘ Copy'; }, 2000);
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════
+   UTILS
+═════════════════════════════════════════════════════════════ */
+function create(tag, cls) {
+  const el = document.createElement(tag);
+  el.className = cls;
+  return el;
+}
+
+function attach(el) {
+  document.getElementById('messages').appendChild(el);
+  scroll();
+}
+
+function scroll() {
+  const s = document.getElementById('chat-scroll');
+  s.scrollTo({ top: s.scrollHeight, behavior: 'smooth' });
+}
+
+function setHint(text) {
+  document.getElementById('input-hint').textContent = text;
+}
+
+function setLoading(on) {
+  isLoading = on;
+  document.getElementById('chat-input').disabled = on;
+  document.getElementById('send-btn').disabled   = on;
+  document.getElementById('btn-new').disabled    = on;
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* Auto-resize textarea — field-sizing:content + JS fallback */
+function syncHeight(el) {
+  // Only needed when field-sizing is not supported
+  if (CSS.supports('field-sizing', 'content')) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
+
+/* ═════════════════════════════════════════════════════════════
+   KEYBOARD
+═════════════════════════════════════════════════════════════ */
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+document.getElementById('chat-input').addEventListener('input', function () {
+  syncHeight(this);
+});
+
+/* ═════════════════════════════════════════════════════════════
+   START
+═════════════════════════════════════════════════════════════ */
+init();
+</script>
+
+
+</body></html>
