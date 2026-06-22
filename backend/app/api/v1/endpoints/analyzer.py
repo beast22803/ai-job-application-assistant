@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Optional
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
 from app.core.auth import get_current_user
 from app.models.user import User
