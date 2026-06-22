@@ -1,12 +1,15 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app.repositories import application_repo
+from app.core.auth import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
 @router.get("/dashboard")
-def get_dashboard(user_id: str = "varshit"):
+def get_dashboard(current_user: User = Depends(get_current_user)):
+    user_id = current_user.id
     apps = application_repo.get_job_applications(user_id)
-    sessions = application_repo.get_all_sessions()
+    sessions = application_repo.get_all_sessions(user_id)
 
     total_apps = len(apps)
     interviews = sum(1 for a in apps if a["status"] in ["Interview", "Offer"])
@@ -30,6 +33,6 @@ def get_dashboard(user_id: str = "varshit"):
     }
 
 @router.get("/sessions")
-def get_sessions():
-    sessions = application_repo.get_all_sessions()
+def get_sessions(current_user: User = Depends(get_current_user)):
+    sessions = application_repo.get_all_sessions(current_user.id)
     return sessions

@@ -8,13 +8,14 @@ import ProjectSection from "./ProjectSection";
 import SkillSection from "./SkillSection";
 import EducationSection from "./EducationSection";
 
-type SectionTab = "experience" | "projects" | "skills" | "education";
+type SectionTab = "experience" | "projects" | "skills" | "education" | "memory";
 
 const TABS: { key: SectionTab; label: string }[] = [
   { key: "experience", label: "Experience" },
   { key: "projects", label: "Projects" },
   { key: "skills", label: "Skills" },
   { key: "education", label: "Education" },
+  { key: "memory", label: "AI Memory & Context" },
 ];
 
 export default function ProfileManager() {
@@ -26,10 +27,12 @@ export default function ProfileManager() {
     education: [],
   });
   const [loading, setLoading] = useState(true);
+  const [userMemory, setUserMemory] = useState("");
+  const [savingContext, setSavingContext] = useState(false);
 
   const fetchProfile = useCallback(async () => {
     try {
-      const data = await api.getProfile("varshit");
+      const data = await api.getProfile();
       setProfile(data);
     } catch (err) {
       console.error("Failed to load profile:", err);
@@ -40,7 +43,28 @@ export default function ProfileManager() {
 
   useEffect(() => {
     fetchProfile();
+    async function loadContext() {
+      try {
+        const data = await api.fetchUserContext();
+        setUserMemory(data.user_memory || "");
+      } catch (err) {
+        console.error("Failed to load user context:", err);
+      }
+    }
+    loadContext();
   }, [fetchProfile]);
+
+  const handleSaveContext = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingContext(true);
+    try {
+      await api.saveUserContext(userMemory);
+    } catch (err) {
+      console.error("Failed to save memory context:", err);
+    } finally {
+      setSavingContext(false);
+    }
+  };
 
   const totalItems =
     profile.experiences.length +
@@ -58,42 +82,42 @@ export default function ProfileManager() {
   // ── CRUD handlers ──
 
   const handleSaveExperience = async (data: Partial<MasterExperience>) => {
-    await api.saveProfileItem("varshit", "experience", data);
+    await api.saveProfileItem("experience", data);
     await fetchProfile();
   };
 
   const handleDeleteExperience = async (id: string) => {
-    await api.deleteProfileItem("varshit", "experience", id);
+    await api.deleteProfileItem("experience", id);
     await fetchProfile();
   };
 
   const handleSaveProject = async (data: Partial<MasterProject>) => {
-    await api.saveProfileItem("varshit", "project", data);
+    await api.saveProfileItem("project", data);
     await fetchProfile();
   };
 
   const handleDeleteProject = async (id: string) => {
-    await api.deleteProfileItem("varshit", "project", id);
+    await api.deleteProfileItem("project", id);
     await fetchProfile();
   };
 
   const handleSaveSkill = async (data: Partial<MasterSkill>) => {
-    await api.saveProfileItem("varshit", "skill", data);
+    await api.saveProfileItem("skill", data);
     await fetchProfile();
   };
 
   const handleDeleteSkill = async (id: string) => {
-    await api.deleteProfileItem("varshit", "skill", id);
+    await api.deleteProfileItem("skill", id);
     await fetchProfile();
   };
 
   const handleSaveEducation = async (data: Partial<MasterEducation>) => {
-    await api.saveProfileItem("varshit", "education", data);
+    await api.saveProfileItem("education", data);
     await fetchProfile();
   };
 
   const handleDeleteEducation = async (id: string) => {
-    await api.deleteProfileItem("varshit", "education", id);
+    await api.deleteProfileItem("education", id);
     await fetchProfile();
   };
 
@@ -197,6 +221,38 @@ export default function ProfileManager() {
                   onSave={handleSaveEducation}
                   onDelete={handleDeleteEducation}
                 />
+              )}
+              {activeSection === "memory" && (
+                <div className="bg-[#0C0C0C] border border-[#222222] rounded-xl p-6">
+                  <h3 className="text-lg font-bold mb-2">AI Career Context & Memory</h3>
+                  <p className="text-[#8E8E93] text-xs mb-6">
+                    Add background information the AI should remember when optimizing your resume, cover letters, and recruiter emails (e.g. career goals, preferred writing styles, tone, specific accomplishments).
+                  </p>
+                  <form onSubmit={handleSaveContext} className="flex flex-col gap-4">
+                    <textarea
+                      value={userMemory}
+                      onChange={(e) => setUserMemory(e.target.value)}
+                      placeholder="e.g. 'I am seeking Senior Frontend Engineer positions, preferably in startup environments. My style is direct and impact-oriented, focusing on concrete metrics rather than buzzwords. When generating cover letters, keep them concise and under 300 words.'"
+                      className="w-full h-64 bg-[#111111] border border-[#222222] rounded-lg p-4 text-sm text-[#F5F5F5] placeholder-[#444444] focus:outline-none focus:border-[#FF4500] transition-colors resize-y font-sans leading-relaxed"
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={savingContext}
+                        className="flex items-center justify-center gap-2 bg-[#FF4500] hover:bg-[#FF5510] text-[#050505] font-mono text-[10px] font-black tracking-widest uppercase px-6 py-3 rounded-full cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {savingContext ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-[#050505] border-t-transparent rounded-full animate-spin" />
+                            Saving Context...
+                          </>
+                        ) : (
+                          "Save AI Context"
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               )}
             </div>
           )}

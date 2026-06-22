@@ -301,7 +301,7 @@ def analyze_resume(resume_text: str) -> dict:
 
     response = llm.invoke([
         SystemMessage(content=system_prompt),
-        HumanMessage(content="Extract info from this resume.")
+        HumanMessage(content="Extract info from this resume. You must return ONLY a raw JSON object matching the required schema. Do NOT return markdown lists, code blocks, or conversational text under any circumstances.")
     ])
 
     cleaned_content = _clean_json_output(response.content)

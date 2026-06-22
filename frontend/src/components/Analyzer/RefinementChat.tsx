@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { refineAsset } from "@/services/api";
+import { refineAsset, saveChatHistory } from "@/services/api";
 
 interface RefinementMessage {
   id: string;
@@ -22,6 +22,7 @@ interface RefinementChatProps {
   onResumeRefined: (html: string) => void;
   onCoverLetterRefined: (html: string) => void;
   onEmailRefined: (data: { subject: string; body: string }) => void;
+  initialMessages?: any[];
 }
 
 const ASSET_LABELS = {
@@ -41,11 +42,28 @@ export default function RefinementChat({
   onResumeRefined,
   onCoverLetterRefined,
   onEmailRefined,
+  initialMessages = [],
 }: RefinementChatProps) {
-  const [messages, setMessages] = useState<RefinementMessage[]>([]);
+  const [messages, setMessages] = useState<RefinementMessage[]>(() => {
+    if (initialMessages && initialMessages.length > 0) {
+      return initialMessages.map((m: any) => ({
+        ...m,
+        timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+      }));
+    }
+    return [];
+  });
   const [input, setInput] = useState("");
   const [refining, setRefining] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (messages.length > 0 && sessionId) {
+      saveChatHistory(sessionId, messages).catch((err) => {
+        console.error("Failed to save chat history:", err);
+      });
+    }
+  }, [messages, sessionId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

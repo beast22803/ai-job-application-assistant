@@ -448,7 +448,8 @@ def optimize_resume(
     user_prefs: dict,
     custom_instructions: str = "",
     job_analysis: dict = None,
-    resume_analysis: dict = None
+    resume_analysis: dict = None,
+    user_memory: str = ""
 ) -> str:
     """
     Generate an optimized resume JSON via LLM and render it to HTML (Idea A).
@@ -464,9 +465,53 @@ def optimize_resume(
     llm = get_llm()
     system_prompt = load_prompt("prompt_final_resume_generator.txt")
     system_prompt = system_prompt.replace("{{ JSON.stringify($json.job, null, 2) }}", json.dumps(job_analysis, indent=2))
-    system_prompt = system_prompt.replace("{{ JSON.stringify($json.resume, null, 2) }}", json.dumps(resume_analysis, indent=2))
+    
+    # Pre-process accepted suggestions to extract and inject approved skills
+    approved_skills = []
+    for sug in accepted_suggestions:
+        # Match "Add SkillName to your Skills section"
+        match = re.search(r"Add\s+([A-Za-z0-9\.\-\#\+]+?)\s+to\s+(?:your\s+)?Skills\s+section", sug, re.IGNORECASE)
+        if match:
+            skill_name = match.group(1).strip()
+            if skill_name:
+                approved_skills.append(skill_name)
+                
+    skills_list = list(resume_analysis.get("skills", []))
+    for skill in approved_skills:
+        if skill not in skills_list:
+            skills_list.append(skill)
+
+    # Construct a clean, non-redundant resume representation to prevent LLM confusion
+    clean_resume = {
+        "name": resume_analysis.get("name", ""),
+        "email": resume_analysis.get("email", ""),
+        "phone": resume_analysis.get("phone", ""),
+        "location": resume_analysis.get("location", ""),
+        "linkedin": resume_analysis.get("linkedin", ""),
+        "portfolio": resume_analysis.get("portfolio", ""),
+        "summary": resume_analysis.get("summary", ""),
+        "skills": skills_list,
+        "experience": resume_analysis.get("experience_structured", []) or resume_analysis.get("experience", []),
+        "projects": resume_analysis.get("projects_structured", []) or resume_analysis.get("projects", []),
+        "education": resume_analysis.get("education_structured", []) or resume_analysis.get("education", []),
+        "certifications": resume_analysis.get("certifications", []),
+        "languages": resume_analysis.get("languages", [])
+    }
+    
+    # Ensure nested objects are dictionary lists, not string lists
+    if clean_resume["experience"] and isinstance(clean_resume["experience"][0], str):
+        clean_resume["experience"] = resume_analysis.get("experience_structured", [])
+    if clean_resume["projects"] and isinstance(clean_resume["projects"][0], str):
+        clean_resume["projects"] = resume_analysis.get("projects_structured", [])
+    if clean_resume["education"] and isinstance(clean_resume["education"][0], str):
+        clean_resume["education"] = resume_analysis.get("education_structured", [])
+
+    system_prompt = system_prompt.replace("{{ JSON.stringify($json.resume, null, 2) }}", json.dumps(clean_resume, indent=2))
     system_prompt = system_prompt.replace("{{ JSON.stringify($json.accepted_suggestions, null, 2) }}", json.dumps(accepted_suggestions, indent=2))
     system_prompt = system_prompt.replace("{{ JSON.stringify($json.memory_context, null, 2) }}", json.dumps(user_prefs, indent=2))
+
+    if user_memory:
+        system_prompt += f"\n\nCRITICAL BACKGROUND CONTEXT ABOUT THE USER (HEED THIS ABOVE ALL ELSE):\n{user_memory}\n"
 
     response = llm.invoke([
         SystemMessage(content=system_prompt),
@@ -550,7 +595,8 @@ def generate_cover_letter(
     style: str = "Formal",
     job_analysis: dict = None,
     resume_analysis: dict = None,
-    ats_results: dict = None
+    ats_results: dict = None,
+    user_memory: str = ""
 ) -> str:
     """
     Generate a tailored cover letter HTML using prompt_cover_letter_generator.txt template.
@@ -571,6 +617,9 @@ def generate_cover_letter(
     system_prompt = system_prompt.replace('{{ JSON.stringify($node["Prepare Generation Payload"].json.resume, null, 2) }}', json.dumps(resume_analysis, indent=2))
     system_prompt = system_prompt.replace('{{ JSON.stringify($node["Prepare Generation Payload"].json.ats, null, 2) }}', json.dumps(ats_results, indent=2))
     system_prompt = system_prompt.replace('{{ JSON.stringify($node["Smart Review Processor"].json.memory_context, null, 2) }}', json.dumps({"style_preference": style}, indent=2))
+
+    if user_memory:
+        system_prompt += f"\n\nCRITICAL BACKGROUND CONTEXT ABOUT THE USER (HEED THIS ABOVE ALL ELSE):\n{user_memory}\n"
 
     response = llm.invoke([
         SystemMessage(content=system_prompt),
@@ -593,7 +642,8 @@ def generate_recruiter_email(
     resume_summary: str,
     job_analysis: dict = None,
     resume_analysis: dict = None,
-    ats_results: dict = None
+    ats_results: dict = None,
+    user_memory: str = ""
 ) -> dict:
     """
     Generate subject and email body for recruiter outreach using prompt_recruiter_email_generator.txt template.
@@ -610,6 +660,9 @@ def generate_recruiter_email(
     system_prompt = system_prompt.replace('{{ JSON.stringify($node["Prepare Generation Payload"].json.resume, null, 2) }}', json.dumps(resume_analysis, indent=2))
     system_prompt = system_prompt.replace('{{ JSON.stringify($node["Prepare Generation Payload"].json.job, null, 2) }}', json.dumps(job_analysis, indent=2))
     system_prompt = system_prompt.replace('{{ JSON.stringify($node["Prepare Generation Payload"].json.ats, null, 2) }}', json.dumps(ats_results, indent=2))
+
+    if user_memory:
+        system_prompt += f"\n\nCRITICAL BACKGROUND CONTEXT ABOUT THE USER (HEED THIS ABOVE ALL ELSE):\n{user_memory}\n"
 
     response = llm.invoke([
         SystemMessage(content=system_prompt),
@@ -635,11 +688,14 @@ def generate_recruiter_email(
 
 # ── Asset Refinement ──────────────────────────────────────────────────────────
 
-def refine_content(asset_type: str, current_content: str, instruction: str, history: list = None) -> str:
+def refine_content(asset_type: str, current_content: str, instruction: str, history: list = None, user_memory: str = "") -> str:
     """Apply a targeted refinement instruction to a generated asset using LLM with optional chat context."""
     from langchain_core.messages import AIMessage
     
     system_prompt = load_prompt("refine_asset.txt")
+    if user_memory:
+        system_prompt += f"\n\nCRITICAL BACKGROUND CONTEXT ABOUT THE USER (HEED THIS ABOVE ALL ELSE):\n{user_memory}\n"
+        
     llm = get_llm()
 
     messages = [SystemMessage(content=system_prompt)]

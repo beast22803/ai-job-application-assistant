@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import * as api from "@/services/api";
 import type { DashboardData, ActiveSession } from "@/types";
 import DashboardComponent from "@/components/Dashboard";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -68,15 +69,17 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="animate-[fadeIn_0.5s_ease-out_both] w-full max-w-[1300px] mx-auto px-4 sm:px-10 py-6 sm:py-10">
-      <DashboardComponent
-        data={dashboardData}
-        sessions={activeSessions}
-        onResumeSession={handleResumeSession}
-        onDeleteSession={handleDeleteSession}
-        onAbandonSession={handleAbandonSession}
-        onUpdateApplicationStatus={handleUpdateStatus}
-      />
-    </div>
+    <ProtectedRoute>
+      <div className="animate-[fadeIn_0.5s_ease-out_both] w-full max-w-[1300px] mx-auto px-4 sm:px-10 py-6 sm:py-10">
+        <DashboardComponent
+          data={dashboardData}
+          sessions={activeSessions}
+          onResumeSession={handleResumeSession}
+          onDeleteSession={handleDeleteSession}
+          onAbandonSession={handleAbandonSession}
+          onUpdateApplicationStatus={handleUpdateStatus}
+        />
+      </div>
+    </ProtectedRoute>
   );
 }

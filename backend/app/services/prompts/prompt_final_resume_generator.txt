@@ -60,7 +60,7 @@ skills (array of strings)
   → Ordering rule: matched_skills from the job first, then remaining resume skills.
   → Apply any accepted suggestion that instructs reordering.
   → Deduplicate: if the same skill appears twice under different names, keep the canonical form.
-  → Include ONLY skills present in the original resume's skills section OR approved in the accepted suggestions list.
+  → Include all skills from the original resume's skills list AND any skills requested to be added by the approved suggestions (e.g., if a suggestion asks to add a skill, you MUST add it to the skills array).
   → Maximum 20 skills.
 
 experience (array of strings)
@@ -103,7 +103,7 @@ Each accepted suggestion instructs you to REWRITE, REORDER, or ADD specific skil
 Read each suggestion and apply it if the relevant content exists or if it explicitly instructs you to add a missing skill.
 
 Rules:
-  → "Add [SKILL]" suggestion: If a suggestion is approved, you MUST add that skill to the "skills" array (and integrate it into the resume summary/bullets if appropriate).
+  → "Add [SKILL]" suggestion: If a suggestion is approved (e.g. "Add Vue.js to your Skills section"), you MUST extract the skill name (e.g. "Vue.js") and add it to the "skills" array (and integrate it into the resume summary and experience bullets where appropriate).
   → "Reorder skills" suggestion: apply the reordering.
   → "Rewrite [ROLE] bullets" suggestion: rewrite that role's bullets using the action verb pattern.
   → "Add [KEYWORD] to experience" suggestion: add the keyword/technology to the relevant experience description or bullets.

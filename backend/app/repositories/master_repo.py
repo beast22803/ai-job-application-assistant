@@ -46,7 +46,7 @@ def save_master_experience(user_id: str, data: dict) -> str:
     db = SessionLocal()
     try:
         exp_id = data.get("id") or f"exp_{uuid.uuid4().hex[:8]}"
-        existing = db.query(MasterExperience).filter(MasterExperience.id == exp_id).first()
+        existing = db.query(MasterExperience).filter(MasterExperience.id == exp_id, MasterExperience.user_id == user_id).first()
         if existing:
             existing.title = data.get("title", existing.title)
             existing.company = data.get("company", existing.company)
@@ -78,10 +78,10 @@ def save_master_experience(user_id: str, data: dict) -> str:
     finally:
         db.close()
 
-def delete_master_experience(exp_id: str) -> bool:
+def delete_master_experience(exp_id: str, user_id: str) -> bool:
     db = SessionLocal()
     try:
-        exp = db.query(MasterExperience).filter(MasterExperience.id == exp_id).first()
+        exp = db.query(MasterExperience).filter(MasterExperience.id == exp_id, MasterExperience.user_id == user_id).first()
         if exp:
             db.delete(exp)
             db.commit()
@@ -99,7 +99,7 @@ def save_master_project(user_id: str, data: dict) -> str:
     db = SessionLocal()
     try:
         proj_id = data.get("id") or f"proj_{uuid.uuid4().hex[:8]}"
-        existing = db.query(MasterProject).filter(MasterProject.id == proj_id).first()
+        existing = db.query(MasterProject).filter(MasterProject.id == proj_id, MasterProject.user_id == user_id).first()
         if existing:
             existing.name = data.get("name", existing.name)
             existing.description = data.get("description", existing.description)
@@ -126,10 +126,10 @@ def save_master_project(user_id: str, data: dict) -> str:
     finally:
         db.close()
 
-def delete_master_project(proj_id: str) -> bool:
+def delete_master_project(proj_id: str, user_id: str) -> bool:
     db = SessionLocal()
     try:
-        proj = db.query(MasterProject).filter(MasterProject.id == proj_id).first()
+        proj = db.query(MasterProject).filter(MasterProject.id == proj_id, MasterProject.user_id == user_id).first()
         if proj:
             db.delete(proj)
             db.commit()
@@ -146,7 +146,7 @@ def save_master_skill(user_id: str, data: dict) -> str:
     db = SessionLocal()
     try:
         skill_id = data.get("id") or f"skill_{uuid.uuid4().hex[:8]}"
-        existing = db.query(MasterSkill).filter(MasterSkill.id == skill_id).first()
+        existing = db.query(MasterSkill).filter(MasterSkill.id == skill_id, MasterSkill.user_id == user_id).first()
         if existing:
             existing.category = data.get("category", existing.category)
             existing.name = data.get("name", existing.name)
@@ -170,10 +170,10 @@ def save_master_skill(user_id: str, data: dict) -> str:
     finally:
         db.close()
 
-def delete_master_skill(skill_id: str) -> bool:
+def delete_master_skill(skill_id: str, user_id: str) -> bool:
     db = SessionLocal()
     try:
-        skill = db.query(MasterSkill).filter(MasterSkill.id == skill_id).first()
+        skill = db.query(MasterSkill).filter(MasterSkill.id == skill_id, MasterSkill.user_id == user_id).first()
         if skill:
             db.delete(skill)
             db.commit()
@@ -190,7 +190,7 @@ def save_master_education(user_id: str, data: dict) -> str:
     db = SessionLocal()
     try:
         edu_id = data.get("id") or f"edu_{uuid.uuid4().hex[:8]}"
-        existing = db.query(MasterEducation).filter(MasterEducation.id == edu_id).first()
+        existing = db.query(MasterEducation).filter(MasterEducation.id == edu_id, MasterEducation.user_id == user_id).first()
         if existing:
             existing.institution = data.get("institution", existing.institution)
             existing.degree = data.get("degree", existing.degree)
@@ -222,10 +222,10 @@ def save_master_education(user_id: str, data: dict) -> str:
     finally:
         db.close()
 
-def delete_master_education(edu_id: str) -> bool:
+def delete_master_education(edu_id: str, user_id: str) -> bool:
     db = SessionLocal()
     try:
-        edu = db.query(MasterEducation).filter(MasterEducation.id == edu_id).first()
+        edu = db.query(MasterEducation).filter(MasterEducation.id == edu_id, MasterEducation.user_id == user_id).first()
         if edu:
             db.delete(edu)
             db.commit()

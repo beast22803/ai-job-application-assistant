@@ -97,10 +97,14 @@ function AnalyzerPageContent() {
   );
 }
 
+import ProtectedRoute from "@/components/ProtectedRoute";
+
 export default function AnalyzerPage() {
   return (
-    <Suspense fallback={<LoadingOverlay visible={true} text="Loading..." />}>
-      <AnalyzerPageContent />
-    </Suspense>
+    <ProtectedRoute>
+      <Suspense fallback={<LoadingOverlay visible={true} text="Loading..." />}>
+        <AnalyzerPageContent />
+      </Suspense>
+    </ProtectedRoute>
   );
 }

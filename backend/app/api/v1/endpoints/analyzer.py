@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import uuid
-from typing import Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
+from app.core.auth import get_current_user
+from app.models.user import User
 
 import app.services.analyzer as az
 import app.services.matchmaker as mm
@@ -12,12 +13,13 @@ router = APIRouter()
 
 @router.post("/analyze")
 async def analyze(
-    user_id: str = Form("varshit"),
     job_description: str = Form(...),
     resume_text: Optional[str] = Form(None),
     resume_file: Optional[UploadFile] = File(None),
     use_master_profile: Optional[str] = Form(None),
+    current_user: User = Depends(get_current_user),
 ):
+    user_id = current_user.id
     user_repo.log_event("ANALYZE_START", user_id, {"has_file": resume_file is not None})
 
     parsed_resume_text = ""
@@ -62,7 +64,8 @@ async def analyze(
         job_analysis=job_analysis,
         resume_analysis=resume_analysis,
         ats_results=ats_results,
-        suggestions=suggestions
+        suggestions=suggestions,
+        user_id=user_id
     )
 
     user_repo.log_event("ANALYZE_SUCCESS", user_id, {"session_id": session_id, "score": ats_results["final_score"]})

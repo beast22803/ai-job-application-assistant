@@ -374,6 +374,7 @@ export default function ExportStep({
               setRefinedEmailSubject(d.subject);
               setRefinedEmailBody(d.body);
             }}
+            initialMessages={reviewResult.chat_history}
           />
         </div>
       )}

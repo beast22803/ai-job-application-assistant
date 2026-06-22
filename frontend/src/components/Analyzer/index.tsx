@@ -30,7 +30,7 @@ export default function Analyzer({
   const [profileStats, setProfileStats] = useState<{experiences: number; projects: number; skills: number; education: number} | null>(null);
 
   useEffect(() => {
-    api.getProfile("varshit").then(p => {
+    api.getProfile().then(p => {
       const stats = {
         experiences: p.experiences.length,
         projects: p.projects.length,
@@ -95,7 +95,6 @@ export default function Analyzer({
     onLoading(true, "Running AI-powered compatibility parsing & ATS evaluation...");
     try {
       const formData = new FormData();
-      formData.append("user_id", "varshit");
       formData.append("job_description", jobDescription);
       if (useMasterProfile) {
         formData.append("use_master_profile", "true");
@@ -137,7 +136,6 @@ export default function Analyzer({
     try {
       const data = await api.reviewAndGenerate({
         session_id: currentSession,
-        user_id: "varshit",
         accepted_suggestions: accepted,
         rejected_suggestions: rejected,
         style_preference: activeStyle,
@@ -156,7 +154,6 @@ export default function Analyzer({
     if (!reviewResult || !lastAnalysis) return;
     try {
       await api.saveApplication({
-        user_id: "varshit",
         job_title: lastAnalysis.job_title,
         company: lastAnalysis.company,
         ats_score: reviewResult.current_ats_score,
@@ -214,6 +211,7 @@ export default function Analyzer({
           verdict_explanation: rr.verdict_explanation || "",
           interview_probability: rr.interview_probability || 0,
           interview_probability_explanation: rr.interview_probability_explanation || "",
+          chat_history: data.chat_history || [],
         });
         setWizardStep(3);
       } else {

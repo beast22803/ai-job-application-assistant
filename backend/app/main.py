@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import profile, analyzer, dashboard, application
+from app.api.v1.endpoints import profile, analyzer, dashboard, application, auth, admin
 from app.core.database import Base, engine
 
 @asynccontextmanager
@@ -13,13 +13,17 @@ async def lifespan(app: FastAPI):
     from sqlalchemy import text
     migration_columns = [
         ("job_applications", "session_id", "VARCHAR(50)"),
+        ("session_store", "user_id", "VARCHAR(50)"),
         ("session_store", "optimized_resume", "TEXT"),
         ("session_store", "cover_letter", "TEXT"),
         ("session_store", "email_subject", "VARCHAR(500)"),
         ("session_store", "email_body", "TEXT"),
         ("session_store", "review_result_json", "TEXT"),
+        ("session_store", "chat_history_json", "TEXT DEFAULT '[]'"),
         ("session_store", "current_step", "INTEGER DEFAULT 2"),
         ("session_store", "status", "VARCHAR(20) DEFAULT 'active'"),
+        ("users", "is_admin", "INTEGER DEFAULT 0"),
+        ("users", "user_memory", "TEXT DEFAULT ''"),
     ]
     for table, column, col_type in migration_columns:
         try:
@@ -39,6 +43,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(analyzer.router, prefix="/api", tags=["Analyzer"])
 app.include_router(profile.router, prefix="/api/profile", tags=["Master Profile"])
 app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])

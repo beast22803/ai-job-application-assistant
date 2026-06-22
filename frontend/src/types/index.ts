@@ -79,6 +79,7 @@ export interface ReviewResult {
   verdict_explanation: string;
   interview_probability: number;
   interview_probability_explanation: string;
+  chat_history?: any[];
 }
 
 export interface RefinementHistoryItem {
@@ -104,7 +105,6 @@ export interface RefineRequest {
 
 export interface ReviewRequest {
   session_id: string;
-  user_id: string;
   accepted_suggestions: string[];
   rejected_suggestions: string[];
   style_preference: string;
@@ -112,7 +112,6 @@ export interface ReviewRequest {
 }
 
 export interface ApplicationRequest {
-  user_id: string;
   job_title: string;
   company: string;
   ats_score: number;
@@ -120,6 +119,21 @@ export interface ApplicationRequest {
   resume_version: number;
   status: string;
   session_id?: string;
+}
+
+// ── Auth Types ───────────────────────────────────────────────────────────────
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  is_admin?: number;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: AuthUser;
 }
 
 // ── Master Profile Types ─────────────────────────────────────────────────────

@@ -3,14 +3,12 @@ from pydantic import BaseModel
 
 class ReviewRequest(BaseModel):
     session_id: str
-    user_id: str = "varshit"
     accepted_suggestions: List[str]
     rejected_suggestions: List[str]
     style_preference: str = "Formal"
     custom_instructions: Optional[str] = ""
 
 class ApplicationRequest(BaseModel):
-    user_id: str = "varshit"
     job_title: str
     company: str
     ats_score: int
@@ -23,7 +21,6 @@ class UpdateStatusRequest(BaseModel):
     status: str
 
 class MatchRequest(BaseModel):
-    user_id: str = "varshit"
     job_description: str
 
 

@@ -18,6 +18,7 @@ class JobApplication(Base):
 class SessionStore(Base):
     __tablename__ = "session_store"
     session_id = Column(String(50), primary_key=True)
+    user_id = Column(String(50), nullable=True, index=True)
     job_description = Column(Text)
     resume_text = Column(Text)
     job_analysis_json = Column(Text)
@@ -30,6 +31,7 @@ class SessionStore(Base):
     email_subject = Column(String(500), nullable=True)
     email_body = Column(Text, nullable=True)
     review_result_json = Column(Text, nullable=True)
+    chat_history_json = Column(Text, default="[]")
     # Session lifecycle
     current_step = Column(Integer, default=2)  # 2=suggestions, 3=export
     status = Column(String(20), default="active")  # active, completed, abandoned

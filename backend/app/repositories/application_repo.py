@@ -13,13 +13,16 @@ def save_session(
     resume_analysis: dict,
     ats_results: dict,
     suggestions: list,
+    user_id: str | None = None,
 ) -> None:
     db = SessionLocal()
     try:
         store = db.query(SessionStore).filter(SessionStore.session_id == session_id).first()
         if not store:
-            store = SessionStore(session_id=session_id)
+            store = SessionStore(session_id=session_id, user_id=user_id)
             db.add(store)
+        elif user_id:
+            store.user_id = user_id
 
         store.job_description = job_desc
         store.resume_text = resume_txt
@@ -36,10 +39,10 @@ def save_session(
     finally:
         db.close()
 
-def get_session(session_id: str) -> dict | None:
+def get_session(session_id: str, user_id: str) -> dict | None:
     db = SessionLocal()
     try:
-        store = db.query(SessionStore).filter(SessionStore.session_id == session_id).first()
+        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
         if not store:
             return None
         result = {
@@ -52,6 +55,7 @@ def get_session(session_id: str) -> dict | None:
             "suggestions": json.loads(store.suggestions_json or "[]"),
             "current_step": store.current_step or 2,
             "status": store.status or "active",
+            "chat_history": json.loads(store.chat_history_json or "[]"),
         }
         # Include generated assets if they exist
         if store.review_result_json:
@@ -69,10 +73,11 @@ def get_session(session_id: str) -> dict | None:
     finally:
         db.close()
 
-def get_all_sessions() -> list[dict]:
+def get_all_sessions(user_id: str) -> list[dict]:
     db = SessionLocal()
     try:
         stores = db.query(SessionStore)\
+            .filter(SessionStore.user_id == user_id)\
             .filter((SessionStore.status == "active") | (SessionStore.status == None))\
             .order_by(SessionStore.timestamp.desc())\
             .all()
@@ -210,14 +215,13 @@ def get_job_applications(user_id: str) -> list[dict]:
     finally:
         db.close()
 
-def delete_session(session_id: str) -> bool:
+def delete_session(session_id: str, user_id: str) -> bool:
     db = SessionLocal()
     try:
-        # Delete related resume versions first
-        db.query(ResumeVersion).filter(ResumeVersion.session_id == session_id).delete()
-        # Delete the session store entry
-        store = db.query(SessionStore).filter(SessionStore.session_id == session_id).first()
+        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
         if store:
+            # Delete related resume versions first
+            db.query(ResumeVersion).filter(ResumeVersion.session_id == session_id).delete()
             db.delete(store)
             db.commit()
             return True
@@ -229,10 +233,10 @@ def delete_session(session_id: str) -> bool:
     finally:
         db.close()
 
-def update_job_application_status(app_id: str, status: str) -> bool:
+def update_job_application_status(app_id: str, user_id: str, status: str) -> bool:
     db = SessionLocal()
     try:
-        app = db.query(JobApplication).filter(JobApplication.id == app_id).first()
+        app = db.query(JobApplication).filter(JobApplication.id == app_id, JobApplication.user_id == user_id).first()
         if app:
             app.status = status
             db.commit()
@@ -252,11 +256,12 @@ def update_session_generated_assets(
     email_subject: str,
     email_body: str,
     review_result: dict,
+    user_id: str,
 ) -> bool:
     """Persist generated assets into the session and advance to step 3."""
     db = SessionLocal()
     try:
-        store = db.query(SessionStore).filter(SessionStore.session_id == session_id).first()
+        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
         if not store:
             return False
         store.optimized_resume = optimized_resume
@@ -275,11 +280,11 @@ def update_session_generated_assets(
     finally:
         db.close()
 
-def complete_session(session_id: str) -> bool:
+def complete_session(session_id: str, user_id: str) -> bool:
     """Mark a session as completed (hides from active list)."""
     db = SessionLocal()
     try:
-        store = db.query(SessionStore).filter(SessionStore.session_id == session_id).first()
+        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
         if not store:
             return False
         store.status = "completed"
@@ -292,11 +297,11 @@ def complete_session(session_id: str) -> bool:
     finally:
         db.close()
 
-def abandon_session(session_id: str) -> bool:
+def abandon_session(session_id: str, user_id: str) -> bool:
     """Mark a session as abandoned (soft-hide from active list without data loss)."""
     db = SessionLocal()
     try:
-        store = db.query(SessionStore).filter(SessionStore.session_id == session_id).first()
+        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
         if not store:
             return False
         store.status = "abandoned"
@@ -304,6 +309,23 @@ def abandon_session(session_id: str) -> bool:
         return True
     except Exception as e:
         print(f"Error abandoning session {session_id}: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def update_session_chat_history(session_id: str, user_id: str, chat_history: list) -> bool:
+    """Save user refinement chat history in the session."""
+    db = SessionLocal()
+    try:
+        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        if not store:
+            return False
+        store.chat_history_json = json.dumps(chat_history)
+        db.commit()
+        return True
+    except Exception as e:
+        print(f"Error updating chat history for {session_id}: {e}")
         db.rollback()
         return False
     finally:
