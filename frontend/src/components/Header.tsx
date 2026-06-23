@@ -88,18 +88,74 @@ export default function Header() {
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-1.5 font-mono text-[10px] text-[#8E8E93] border border-white/10 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors pointer-events-auto cursor-pointer"
               >
-                <span>{user.name.toUpperCase()}</span>
+                <span className="material-symbols-rounded text-xs sm:hidden">menu</span>
+                <span className="hidden sm:inline">{user.name.toUpperCase()}</span>
                 <span className="material-symbols-rounded text-xs select-none">
                   {isOpen ? "keyboard_arrow_up" : "keyboard_arrow_down"}
                 </span>
               </button>
               
               {isOpen && (
-                <div className="absolute right-0 mt-2.5 w-48 bg-[#0b0b0d]/90 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-2xl p-2 z-50 animate-[fadeIn_0.15s_ease-out] flex flex-col gap-1 pointer-events-auto">
+                <div className="absolute right-0 mt-2.5 w-52 bg-[#0b0b0d]/90 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-2xl p-2 z-50 animate-[fadeIn_0.15s_ease-out] flex flex-col gap-1 pointer-events-auto">
                   <div className="px-3 py-2 border-b border-white/5">
                     <p className="font-sans text-[11px] font-semibold text-white truncate">{user.name}</p>
                     <p className="font-mono text-[9px] text-[#8E8E93] truncate">{user.email}</p>
                   </div>
+                  
+                  {/* Mobile Navigation Links */}
+                  <div className="flex flex-col gap-0.5 border-b border-white/5 pb-1 sm:hidden">
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setIsOpen(false)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left font-mono text-[10px] transition-all ${
+                        pathname === "/dashboard"
+                          ? "bg-white/10 text-[#FF4500]"
+                          : "text-[#8E8E93] hover:text-[#F5F5F5] hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="material-symbols-rounded text-sm">analytics</span>
+                      <span>ANALYTICS</span>
+                    </Link>
+                    {!!user.is_admin && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setIsOpen(false)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left font-mono text-[10px] transition-all ${
+                          pathname === "/admin"
+                            ? "bg-white/10 text-[#FF4500]"
+                            : "text-[#8E8E93] hover:text-[#F5F5F5] hover:bg-white/5"
+                        }`}
+                      >
+                        <span className="material-symbols-rounded text-sm">admin_panel_settings</span>
+                        <span>ADMIN PANEL</span>
+                      </Link>
+                    )}
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsOpen(false)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left font-mono text-[10px] transition-all ${
+                        pathname === "/profile"
+                          ? "bg-white/10 text-[#FF4500]"
+                          : "text-[#8E8E93] hover:text-[#F5F5F5] hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="material-symbols-rounded text-sm">person</span>
+                      <span>MASTER PROFILE</span>
+                    </Link>
+                    <Link
+                      href="/analyzer"
+                      onClick={() => setIsOpen(false)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left font-mono text-[10px] transition-all ${
+                        pathname === "/analyzer"
+                          ? "bg-white/10 text-[#FF4500]"
+                          : "text-[#8E8E93] hover:text-[#F5F5F5] hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="material-symbols-rounded text-sm">add_circle</span>
+                      <span>NEW ANALYSIS</span>
+                    </Link>
+                  </div>
+
                   <button
                     onClick={() => {
                       setIsOpen(false);
