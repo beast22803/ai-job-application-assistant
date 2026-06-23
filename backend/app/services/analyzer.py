@@ -293,6 +293,196 @@ def normalize_parsed_resume(data: dict) -> dict:
     return data
 
 
+def parse_optimized_resume_data(resume_data: dict, original_analysis: dict) -> dict:
+    """
+    Parses the generated resume_data JSON back into a structured resume_analysis dict,
+    avoiding the second LLM call entirely.
+    """
+    header = resume_data.get("header", "")
+    header_parts = [p.strip() for p in header.split("|") if p.strip()]
+    
+    # Defaults from original_analysis
+    name = original_analysis.get("name") or original_analysis.get("candidate_name") or "Candidate"
+    email = original_analysis.get("email", "")
+    phone = original_analysis.get("phone", "")
+    location = original_analysis.get("location", "")
+    linkedin = original_analysis.get("linkedin", "")
+    portfolio = original_analysis.get("portfolio", "")
+    
+    # Refine name and contact info using parts from the header if they match typical patterns
+    if header_parts:
+        # First part is name, unless it is a generic/fallback string
+        first_part = header_parts[0]
+        if first_part and first_part.lower() != "candidate":
+            name = first_part
+            
+        for part in header_parts[1:]:
+            if "@" in part:
+                email = part
+            elif "linkedin.com" in part or "linkedin" in part:
+                linkedin = part
+            elif "github.com" in part or "github" in part or "portfolio" in part:
+                portfolio = part
+            elif any(c.isdigit() for c in part) and len([c for c in part if c.isdigit()]) >= 7:
+                phone = part
+            else:
+                if part and not location:
+                    location = part
+
+    analysis = {
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "location": location,
+        "linkedin": linkedin,
+        "portfolio": portfolio,
+        "certifications": original_analysis.get("certifications", []),
+        "languages": original_analysis.get("languages", []),
+        "summary": resume_data.get("summary", ""),
+        "skills": resume_data.get("skills", []),
+        "experience": [],
+        "projects": [],
+        "education": []
+    }
+            
+    # Parse experience
+    # Format: "[Job Title] · [Company] · [Start]–[End]\n[bullet1]\n[bullet2]..."
+    experience_raw = resume_data.get("experience", [])
+    experience_structured = []
+    experience_strings = []
+    for exp_str in experience_raw:
+        if not isinstance(exp_str, str) or not exp_str.strip():
+            continue
+        lines = [line.strip() for line in exp_str.split("\n") if line.strip()]
+        if not lines:
+            continue
+        meta_line = lines[0]
+        # Split meta_line by · or | or -
+        meta_parts = [p.strip() for p in meta_line.split("·")]
+        if len(meta_parts) < 3:
+            meta_parts = [p.strip() for p in meta_line.split("|")]
+        if len(meta_parts) < 3:
+            meta_parts = [p.strip() for p in meta_line.split(" - ")]
+            
+        title = ""
+        company = ""
+        start = ""
+        end = ""
+        
+        if len(meta_parts) >= 3:
+            title = meta_parts[0]
+            company = meta_parts[1]
+            dates_str = " · ".join(meta_parts[2:])
+            # Split dates by - or – or — or to
+            date_parts = re.split(r'\s+to\s+|\s*[-–—]\s*', dates_str, flags=re.IGNORECASE)
+            if len(date_parts) >= 2:
+                start = date_parts[0].strip()
+                end = date_parts[1].strip()
+            else:
+                start = dates_str
+                end = ""
+        elif len(meta_parts) == 2:
+            title = meta_parts[0]
+            company = meta_parts[1]
+        else:
+            title = meta_line
+            
+        description = "\n".join(lines[1:]).strip()
+        
+        experience_structured.append({
+            "title": title,
+            "company": company,
+            "start": start,
+            "end": end,
+            "description": description
+        })
+        experience_strings.append(exp_str)
+        
+    analysis["experience_structured"] = experience_structured
+    analysis["experience"] = experience_strings
+    
+    # Parse projects
+    # Format: "[Project Name] — [tech1, tech2, tech3]\n[1–2 sentence description]"
+    projects_raw = resume_data.get("projects", [])
+    projects_structured = []
+    projects_strings = []
+    for proj_str in projects_raw:
+        if not isinstance(proj_str, str) or not proj_str.strip():
+            continue
+        lines = [line.strip() for line in proj_str.split("\n") if line.strip()]
+        if not lines:
+            continue
+        meta_line = lines[0]
+        meta_parts = [p.strip() for p in meta_line.split("—")]
+        if len(meta_parts) < 2:
+            meta_parts = [p.strip() for p in meta_line.split(" - ")]
+        if len(meta_parts) < 2:
+            meta_parts = [p.strip() for p in meta_line.split("|")]
+            
+        name = ""
+        tech = []
+        if len(meta_parts) >= 2:
+            name = meta_parts[0]
+            tech = [t.strip() for t in meta_parts[1].split(",") if t.strip()]
+        else:
+            name = meta_line
+            
+        description = "\n".join(lines[1:]).strip()
+        
+        projects_structured.append({
+            "name": name,
+            "technologies": tech,
+            "description": description
+        })
+        projects_strings.append(proj_str)
+        
+    analysis["projects_structured"] = projects_structured
+    analysis["projects"] = projects_strings
+    
+    # Parse education
+    # Format: "[Degree] · [Institution] · [Year]"
+    education_raw = resume_data.get("education", [])
+    education_structured = []
+    education_strings = []
+    for edu_str in education_raw:
+        if not isinstance(edu_str, str) or not edu_str.strip():
+            continue
+        edu_parts = [p.strip() for p in edu_str.split("·")]
+        if len(edu_parts) < 2:
+            edu_parts = [p.strip() for p in edu_str.split("|")]
+        if len(edu_parts) < 2:
+            edu_parts = [p.strip() for p in edu_str.split(" - ")]
+            
+        degree = ""
+        institution = ""
+        year = ""
+        
+        if len(edu_parts) >= 3:
+            degree = edu_parts[0]
+            institution = edu_parts[1]
+            year = " · ".join(edu_parts[2:])
+        elif len(edu_parts) == 2:
+            degree = edu_parts[0]
+            institution = edu_parts[1]
+        else:
+            degree = edu_str
+            
+        education_structured.append({
+            "degree": degree,
+            "institution": institution,
+            "year": year
+        })
+        education_strings.append(edu_str)
+        
+    analysis["education_structured"] = education_structured
+    analysis["education"] = education_strings
+    
+    # Legacy compat
+    analysis["candidate_name"] = analysis.get("name", "")
+    
+    return analysis
+
+
 def analyze_resume(resume_text: str) -> dict:
     """Extract candidate details from a resume, strictly adhering to the facts in the text."""
     llm = get_llm()

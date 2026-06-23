@@ -198,7 +198,7 @@ def review_resume(req: ReviewRequest, current_user: User = Depends(get_current_u
     if req.custom_instructions:
         instructions += f"User note: {req.custom_instructions}."
 
-    new_resume = gen.optimize_resume(
+    new_resume, resume_data = gen.optimize_resume_raw(
         original_resume=session["resume_text"],
         job_desc=session["job_description"],
         accepted_suggestions=req.accepted_suggestions,
@@ -209,29 +209,36 @@ def review_resume(req: ReviewRequest, current_user: User = Depends(get_current_u
         user_memory=current_user.user_memory or ""
     )
     
-    new_resume_analysis = az.analyze_resume(new_resume)
+    # Deterministic parser avoids an expensive LLM call and ensures correct mapping of generated resume
+    new_resume_analysis = az.parse_optimized_resume_data(resume_data, session["resume_analysis"])
     new_ats_results = az.run_ats_scoring(session["job_analysis"], new_resume_analysis, session["job_description"], new_resume)
     
-    cover_letter = gen.generate_cover_letter(
-        optimized_resume=new_resume,
-        job_desc=session["job_description"],
-        style=req.style_preference,
-        job_analysis=session["job_analysis"],
-        resume_analysis=new_resume_analysis,
-        ats_results=new_ats_results,
-        user_memory=current_user.user_memory or ""
-    )
-    
-    recruiter_email = gen.generate_recruiter_email(
-        candidate_name=new_resume_analysis.get("name", "Candidate"),
-        role_info=session["job_analysis"].get("role", "the role"),
-        company=session["job_analysis"].get("company", "the company"),
-        resume_summary=new_resume_analysis.get("summary", ""),
-        job_analysis=session["job_analysis"],
-        resume_analysis=new_resume_analysis,
-        ats_results=new_ats_results,
-        user_memory=current_user.user_memory or ""
-    )
+    # Run the cover letter and recruiter email generations concurrently to minimize response time
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_cl = executor.submit(
+            gen.generate_cover_letter,
+            optimized_resume=new_resume,
+            job_desc=session["job_description"],
+            style=req.style_preference,
+            job_analysis=session["job_analysis"],
+            resume_analysis=new_resume_analysis,
+            ats_results=new_ats_results,
+            user_memory=current_user.user_memory or ""
+        )
+        future_email = executor.submit(
+            gen.generate_recruiter_email,
+            candidate_name=new_resume_analysis.get("name", "Candidate"),
+            role_info=session["job_analysis"].get("role", "the role"),
+            company=session["job_analysis"].get("company", "the company"),
+            resume_summary=new_resume_analysis.get("summary", ""),
+            job_analysis=session["job_analysis"],
+            resume_analysis=new_resume_analysis,
+            ats_results=new_ats_results,
+            user_memory=current_user.user_memory or ""
+        )
+        cover_letter = future_cl.result()
+        recruiter_email = future_email.result()
     
     validation = gen.validate_resume(new_resume, new_resume_analysis.get("name", "Candidate"))
     

@@ -441,7 +441,7 @@ def render_resume_json_to_html(resume_data: dict) -> str:
 
 # ── Resume Optimization ───────────────────────────────────────────────────────
 
-def optimize_resume(
+def optimize_resume_raw(
     original_resume: str,
     job_desc: str,
     accepted_suggestions: list[str],
@@ -450,9 +450,10 @@ def optimize_resume(
     job_analysis: dict = None,
     resume_analysis: dict = None,
     user_memory: str = ""
-) -> str:
+) -> tuple[str, dict]:
     """
-    Generate an optimized resume JSON via LLM and render it to HTML (Idea A).
+    Generate an optimized resume JSON via LLM, and return both the rendered HTML string
+    and the raw JSON dict structure returned by the LLM.
     Must adhere strictly to actual achievements without hallucinating fake jobs or credentials.
     """
     if job_analysis is None:
@@ -536,7 +537,34 @@ def optimize_resume(
             "education": resume_analysis.get("education", [])
         }
 
-    return render_resume_json_to_html(resume_data)
+    return render_resume_json_to_html(resume_data), resume_data
+
+
+def optimize_resume(
+    original_resume: str,
+    job_desc: str,
+    accepted_suggestions: list[str],
+    user_prefs: dict,
+    custom_instructions: str = "",
+    job_analysis: dict = None,
+    resume_analysis: dict = None,
+    user_memory: str = ""
+) -> str:
+    """
+    Generate an optimized resume JSON via LLM and render it to HTML (Idea A).
+    Must adhere strictly to actual achievements without hallucinating fake jobs or credentials.
+    """
+    html_content, _ = optimize_resume_raw(
+        original_resume=original_resume,
+        job_desc=job_desc,
+        accepted_suggestions=accepted_suggestions,
+        user_prefs=user_prefs,
+        custom_instructions=custom_instructions,
+        job_analysis=job_analysis,
+        resume_analysis=resume_analysis,
+        user_memory=user_memory
+    )
+    return html_content
 
 
 def validate_resume(resume_html: str, candidate_name: str = "") -> dict:

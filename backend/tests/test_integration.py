@@ -45,13 +45,16 @@ Location: Munich, Germany
 LinkedIn: linkedin.com/in/varshitmadisetti
 Portfolio: github.com/varshit
 
-Professional Summary:
+SUMMARY
+========================================
 Front-End Engineer with 4 years of experience building scalable web applications with React, TypeScript, and modern state management.
 
-Skills:
+SKILLS
+========================================
 React, TypeScript, Redux, HTML5, CSS3, Git, REST APIs, Jest
 
-Experience:
+WORK EXPERIENCE
+========================================
 Frontend Engineer | Tech Corp | Jan 2022 - Present
 - Built and maintained several web pages using React, Redux, and TypeScript.
 - Integrated REST APIs with Redux for state management, improving load times by 20%.
@@ -61,7 +64,8 @@ Junior Developer | Web Agency | Jun 2020 - Dec 2021
 - Developed responsive websites using HTML, CSS, and basic JavaScript.
 - Collaborated with UI designers to implement custom animations.
 
-Education:
+EDUCATION
+========================================
 B.S. in Computer Science | Technical University of Munich | 2017 - 2020
 """
 
