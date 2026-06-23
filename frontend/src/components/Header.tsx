@@ -86,12 +86,16 @@ export default function Header() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-1.5 font-mono text-[10px] text-[#8E8E93] border border-white/10 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors pointer-events-auto cursor-pointer"
+                className="flex items-center gap-1 sm:gap-1.5 font-mono text-[10px] text-[#8E8E93] border border-white/10 rounded-full bg-white/5 hover:bg-white/10 transition-colors pointer-events-auto cursor-pointer p-1.5 sm:px-3 sm:py-1.5"
               >
-                <span className="material-symbols-rounded text-xs sm:hidden">menu</span>
+                <span className="sm:hidden flex items-center justify-center w-4 h-4">
+                  <span className="material-symbols-rounded text-base select-none">menu</span>
+                </span>
                 <span className="hidden sm:inline">{user.name.toUpperCase()}</span>
-                <span className="material-symbols-rounded text-xs select-none">
-                  {isOpen ? "keyboard_arrow_up" : "keyboard_arrow_down"}
+                <span className="hidden sm:flex items-center justify-center">
+                  <span className="material-symbols-rounded text-xs select-none">
+                    {isOpen ? "keyboard_arrow_up" : "keyboard_arrow_down"}
+                  </span>
                 </span>
               </button>
               
