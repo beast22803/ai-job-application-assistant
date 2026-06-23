@@ -12,7 +12,7 @@ export default function ProtectedRoute({ children, requireAdmin = false }: { chi
     if (!loading) {
       if (!user) {
         router.push("/login");
-      } else if (requireAdmin && user.is_admin !== 1) {
+      } else if (requireAdmin && !user.is_admin) {
         router.push("/dashboard");
       }
     }
@@ -32,7 +32,7 @@ export default function ProtectedRoute({ children, requireAdmin = false }: { chi
     );
   }
 
-  if (!user || (requireAdmin && user.is_admin !== 1)) {
+  if (!user || (requireAdmin && !user.is_admin)) {
     return null;
   }
 

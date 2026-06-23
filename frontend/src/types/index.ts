@@ -127,7 +127,7 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  is_admin?: number;
+  is_admin?: boolean | number;
 }
 
 export interface AuthResponse {

@@ -44,7 +44,7 @@ export default function Header() {
             >
               Analytics
             </Link>
-            {user.is_admin === 1 && (
+            {!!user.is_admin && (
               <Link
                 href="/admin"
                 className={`font-mono text-[10px] font-semibold tracking-wider uppercase px-4 py-1.5 rounded-sm transition-all ${
