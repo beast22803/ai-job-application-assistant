@@ -31,48 +31,44 @@ export default function Header() {
             Job<span className="text-[#FF4500]">Analyser</span>
           </div>
         </Link>
-        
+
         {user ? (
           <div className="hidden sm:flex bg-white/5 p-1 rounded-full border border-white/5 gap-1">
             <Link
               href="/dashboard"
-              className={`font-mono text-[10px] font-semibold tracking-wider uppercase px-4 py-1.5 rounded-sm transition-all ${
-                pathname === "/dashboard"
-                  ? "bg-[#050505] text-[#FF4500] shadow-md"
-                  : "text-[#8E8E93] hover:text-[#F5F5F5]"
-              }`}
+              className={`font-mono text-[10px] font-semibold tracking-wider uppercase px-4 py-1.5 rounded-sm transition-all ${pathname === "/dashboard"
+                ? "bg-[#050505] text-[#FF4500] shadow-md"
+                : "text-[#8E8E93] hover:text-[#F5F5F5]"
+                }`}
             >
               Analytics
             </Link>
             {!!user.is_admin && (
               <Link
                 href="/admin"
-                className={`font-mono text-[10px] font-semibold tracking-wider uppercase px-4 py-1.5 rounded-sm transition-all ${
-                  pathname === "/admin"
-                    ? "bg-[#050505] text-[#FF4500] shadow-md"
-                    : "text-[#8E8E93] hover:text-[#F5F5F5]"
-                }`}
+                className={`font-mono text-[10px] font-semibold tracking-wider uppercase px-4 py-1.5 rounded-sm transition-all ${pathname === "/admin"
+                  ? "bg-[#050505] text-[#FF4500] shadow-md"
+                  : "text-[#8E8E93] hover:text-[#F5F5F5]"
+                  }`}
               >
                 Admin
               </Link>
             )}
             <Link
               href="/profile"
-              className={`font-mono text-[10px] font-semibold tracking-wider uppercase px-4 py-1.5 rounded-sm transition-all ${
-                pathname === "/profile"
-                  ? "bg-[#050505] text-[#FF4500] shadow-md"
-                  : "text-[#8E8E93] hover:text-[#F5F5F5]"
-              }`}
+              className={`font-mono text-[10px] font-semibold tracking-wider uppercase px-4 py-1.5 rounded-sm transition-all ${pathname === "/profile"
+                ? "bg-[#050505] text-[#FF4500] shadow-md"
+                : "text-[#8E8E93] hover:text-[#F5F5F5]"
+                }`}
             >
               Master Profile
             </Link>
             <Link
               href="/analyzer"
-              className={`font-mono text-[10px] font-semibold tracking-wider uppercase px-4 py-1.5 rounded-sm transition-all ${
-                pathname === "/analyzer"
-                  ? "bg-[#050505] text-[#FF4500] shadow-md"
-                  : "text-[#8E8E93] hover:text-[#F5F5F5]"
-              }`}
+              className={`font-mono text-[10px] font-semibold tracking-wider uppercase px-4 py-1.5 rounded-sm transition-all ${pathname === "/analyzer"
+                ? "bg-[#050505] text-[#FF4500] shadow-md"
+                : "text-[#8E8E93] hover:text-[#F5F5F5]"
+                }`}
             >
               New Analysis
             </Link>
@@ -86,7 +82,7 @@ export default function Header() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-1 sm:gap-1.5 font-mono text-[10px] text-[#8E8E93] border border-white/10 rounded-full bg-white/5 hover:bg-white/10 transition-colors pointer-events-auto cursor-pointer p-1.5 sm:px-3 sm:py-1.5"
+                className="flex items-center gap-1 sm:gap-1.5 font-mono text-[10px] text-[#8E8E93] transition-colors pointer-events-auto cursor-pointer p-1.5 sm:px-3 sm:py-1.5"
               >
                 <span className="sm:hidden flex items-center justify-center w-4 h-4">
                   <span className="material-symbols-rounded text-base select-none">menu</span>
@@ -98,24 +94,23 @@ export default function Header() {
                   </span>
                 </span>
               </button>
-              
+
               {isOpen && (
                 <div className="absolute right-0 mt-2.5 w-52 bg-[#0b0b0d]/90 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-2xl p-2 z-50 animate-[fadeIn_0.15s_ease-out] flex flex-col gap-1 pointer-events-auto">
                   <div className="px-3 py-2 border-b border-white/5">
                     <p className="font-sans text-[11px] font-semibold text-white truncate">{user.name}</p>
                     <p className="font-mono text-[9px] text-[#8E8E93] truncate">{user.email}</p>
                   </div>
-                  
+
                   {/* Mobile Navigation Links */}
                   <div className="flex flex-col gap-0.5 border-b border-white/5 pb-1 sm:hidden">
                     <Link
                       href="/dashboard"
                       onClick={() => setIsOpen(false)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left font-mono text-[10px] transition-all ${
-                        pathname === "/dashboard"
-                          ? "bg-white/10 text-[#FF4500]"
-                          : "text-[#8E8E93] hover:text-[#F5F5F5] hover:bg-white/5"
-                      }`}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left font-mono text-[10px] transition-all ${pathname === "/dashboard"
+                        ? "bg-white/10 text-[#FF4500]"
+                        : "text-[#8E8E93] hover:text-[#F5F5F5] hover:bg-white/5"
+                        }`}
                     >
                       <span className="material-symbols-rounded text-sm">analytics</span>
                       <span>ANALYTICS</span>
@@ -124,11 +119,10 @@ export default function Header() {
                       <Link
                         href="/admin"
                         onClick={() => setIsOpen(false)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left font-mono text-[10px] transition-all ${
-                          pathname === "/admin"
-                            ? "bg-white/10 text-[#FF4500]"
-                            : "text-[#8E8E93] hover:text-[#F5F5F5] hover:bg-white/5"
-                        }`}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left font-mono text-[10px] transition-all ${pathname === "/admin"
+                          ? "bg-white/10 text-[#FF4500]"
+                          : "text-[#8E8E93] hover:text-[#F5F5F5] hover:bg-white/5"
+                          }`}
                       >
                         <span className="material-symbols-rounded text-sm">admin_panel_settings</span>
                         <span>ADMIN PANEL</span>
@@ -137,11 +131,10 @@ export default function Header() {
                     <Link
                       href="/profile"
                       onClick={() => setIsOpen(false)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left font-mono text-[10px] transition-all ${
-                        pathname === "/profile"
-                          ? "bg-white/10 text-[#FF4500]"
-                          : "text-[#8E8E93] hover:text-[#F5F5F5] hover:bg-white/5"
-                      }`}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left font-mono text-[10px] transition-all ${pathname === "/profile"
+                        ? "bg-white/10 text-[#FF4500]"
+                        : "text-[#8E8E93] hover:text-[#F5F5F5] hover:bg-white/5"
+                        }`}
                     >
                       <span className="material-symbols-rounded text-sm">person</span>
                       <span>MASTER PROFILE</span>
@@ -149,11 +142,10 @@ export default function Header() {
                     <Link
                       href="/analyzer"
                       onClick={() => setIsOpen(false)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left font-mono text-[10px] transition-all ${
-                        pathname === "/analyzer"
-                          ? "bg-white/10 text-[#FF4500]"
-                          : "text-[#8E8E93] hover:text-[#F5F5F5] hover:bg-white/5"
-                      }`}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left font-mono text-[10px] transition-all ${pathname === "/analyzer"
+                        ? "bg-white/10 text-[#FF4500]"
+                        : "text-[#8E8E93] hover:text-[#F5F5F5] hover:bg-white/5"
+                        }`}
                     >
                       <span className="material-symbols-rounded text-sm">add_circle</span>
                       <span>NEW ANALYSIS</span>
