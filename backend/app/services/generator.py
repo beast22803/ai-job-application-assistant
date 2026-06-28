@@ -27,13 +27,15 @@ def render_resume_json_to_html(resume_data: dict) -> str:
         name = "Candidate"
         contact_info = []
         
-    # Render header block
-    contact_spans = "".join([f"<span>{item}</span>" for item in contact_info])
+    # Render header block - name on left, contact stack on right
+    contact_divs = "".join([f"<div>{item}</div>" for item in contact_info])
     header_html = f"""
     <div class="header">
-      <h1>{name}</h1>
+      <div class="header-left">
+        <h1>{name}</h1>
+      </div>
       <div class="contact-info">
-        {contact_spans}
+        {contact_divs}
       </div>
     </div>
     """
@@ -231,74 +233,76 @@ def render_resume_json_to_html(resume_data: dict) -> str:
 <head>
   <meta charset="UTF-8">
   <title>Optimized Resume</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
     body {{
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       color: #0f172a;
       background-color: #f8fafc;
       line-height: 1.5;
       margin: 0;
       padding: 2rem 1rem;
+      -webkit-font-smoothing: antialiased;
     }}
     .page {{
       max-width: 800px;
       margin: 0 auto;
       background: #ffffff;
-      padding: 3rem;
-      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      padding: 3.5rem 3rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
       border-radius: 8px;
       box-sizing: border-box;
     }}
     .header {{
-      text-align: center;
-      border-bottom: 2px solid #0f172a;
-      padding-bottom: 1.25rem;
-      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
     }}
-    .header h1 {{
+    .header-left h1 {{
+      font-family: 'Outfit', sans-serif;
       font-size: 2.25rem;
       color: #0f172a;
-      margin: 0 0 0.5rem 0;
-      font-weight: 700;
-      letter-spacing: -0.025em;
+      margin: 0;
+      font-weight: 800;
+      letter-spacing: -0.03em;
     }}
     .contact-info {{
-      font-size: 0.875rem;
+      font-size: 0.825rem;
       color: #475569;
       display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 0.5rem 0.75rem;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.25rem;
+      font-weight: 500;
+      text-align: right;
     }}
-    .contact-info span {{
-      display: inline-flex;
-      align-items: center;
-    }}
-    .contact-info span:not(:last-child)::after {{
-      content: "•";
-      margin-left: 0.75rem;
-      color: #cbd5e1;
+    .contact-info div {{
+      margin: 0;
     }}
     .section {{
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.75rem;
     }}
     .section-title {{
-      font-size: 1.125rem;
-      font-weight: 600;
-      color: #0f172a;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #1e3a8a;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid #cbd5e1;
-      padding-bottom: 0.25rem;
+      letter-spacing: 0.075em;
+      border-left: 4px solid #2563eb;
+      padding-left: 0.75rem;
       margin-top: 0;
-      margin-bottom: 0.75rem;
+      margin-bottom: 1rem;
     }}
     .summary-text {{
-      font-size: 0.925rem;
+      font-size: 0.9rem;
       color: #334155;
       text-align: justify;
       margin: 0;
-      line-height: 1.6;
+      line-height: 1.65;
     }}
     .skills-grid {{
       display: flex;
@@ -306,11 +310,11 @@ def render_resume_json_to_html(resume_data: dict) -> str:
       gap: 0.5rem;
     }}
     .skill-tag {{
-      font-size: 0.825rem;
+      font-size: 0.8rem;
       background-color: #f1f5f9;
-      color: #334155;
-      padding: 0.25rem 0.625rem;
-      border-radius: 4px;
+      color: #1e293b;
+      padding: 0.25rem 0.75rem;
+      border-radius: 6px;
       font-weight: 500;
       border: 1px solid #e2e8f0;
     }}
@@ -324,7 +328,7 @@ def render_resume_json_to_html(resume_data: dict) -> str:
       margin-bottom: 0.375rem;
     }}
     .exp-title {{
-      font-weight: 600;
+      font-weight: 700;
       color: #0f172a;
       font-size: 0.95rem;
     }}
@@ -334,24 +338,25 @@ def render_resume_json_to_html(resume_data: dict) -> str:
       font-size: 0.875rem;
     }}
     .exp-company {{
-      font-weight: 500;
-      color: #475569;
+      font-weight: 600;
+      color: #2563eb;
       font-size: 0.95rem;
     }}
     .exp-dates {{
-      font-size: 0.875rem;
+      font-size: 0.825rem;
       color: #64748b;
-      font-weight: 500;
+      font-weight: 600;
+      font-family: monospace;
     }}
     .exp-bullets {{
       margin: 0;
       padding-left: 1.25rem;
       color: #334155;
-      font-size: 0.9rem;
-      line-height: 1.5;
+      font-size: 0.875rem;
+      line-height: 1.6;
     }}
     .exp-bullets li {{
-      margin-bottom: 0.25rem;
+      margin-bottom: 0.35rem;
     }}
     .project-item {{
       margin-bottom: 1rem;
@@ -363,22 +368,23 @@ def render_resume_json_to_html(resume_data: dict) -> str:
       margin-bottom: 0.25rem;
     }}
     .project-name {{
-      font-weight: 600;
+      font-weight: 700;
       color: #0f172a;
       font-size: 0.95rem;
     }}
     .project-tech {{
-      font-size: 0.825rem;
-      color: #0f172a;
-      background-color: #f1f5f9;
-      padding: 0.125rem 0.5rem;
+      font-size: 0.75rem;
+      color: #1e3a8a;
+      background-color: #eff6ff;
+      padding: 0.15rem 0.5rem;
       border-radius: 4px;
-      font-weight: 500;
+      font-weight: 600;
+      border: 1px solid #bfdbfe;
     }}
     .project-desc {{
       margin: 0;
-      font-size: 0.9rem;
-      color: #334155;
+      font-size: 0.875rem;
+      color: #475569;
       line-height: 1.5;
     }}
     .edu-item {{
@@ -390,7 +396,7 @@ def render_resume_json_to_html(resume_data: dict) -> str:
       align-items: baseline;
     }}
     .edu-degree {{
-      font-weight: 600;
+      font-weight: 700;
       color: #0f172a;
       font-size: 0.95rem;
     }}
@@ -400,14 +406,15 @@ def render_resume_json_to_html(resume_data: dict) -> str:
       font-size: 0.875rem;
     }}
     .edu-institution {{
-      font-weight: 500;
+      font-weight: 600;
       color: #475569;
       font-size: 0.95rem;
     }}
     .edu-year {{
-      font-size: 0.875rem;
+      font-size: 0.825rem;
       color: #64748b;
-      font-weight: 500;
+      font-weight: 600;
+      font-family: monospace;
     }}
     @media print {{
       body {{
@@ -421,6 +428,12 @@ def render_resume_json_to_html(resume_data: dict) -> str:
         box-shadow: none;
         max-width: 100%;
         border-radius: 0;
+      }}
+      .section {{
+        page-break-inside: avoid;
+      }}
+      .exp-item, .project-item, .edu-item {{
+        page-break-inside: avoid;
       }}
     }}
   </style>
@@ -469,15 +482,53 @@ def optimize_resume_raw(
     
     # Pre-process accepted suggestions to extract and inject approved skills
     approved_skills = []
+    approved_keywords = []
+    emphasis_keywords = []
+    
+    skills_list = list(resume_analysis.get("skills", []))
+    
     for sug in accepted_suggestions:
         # Match "Add SkillName to your Skills section"
-        match = re.search(r"Add\s+([A-Za-z0-9\.\-\#\+]+?)\s+to\s+(?:your\s+)?Skills\s+section", sug, re.IGNORECASE)
+        match = re.search(r"Add\s+([A-Za-z0-9\.\-\#\+\s]+?)\s+to\s+(?:your\s+)?Skills\s+section", sug, re.IGNORECASE)
         if match:
             skill_name = match.group(1).strip()
-            if skill_name:
+            if skill_name and skill_name not in approved_skills:
                 approved_skills.append(skill_name)
                 
-    skills_list = list(resume_analysis.get("skills", []))
+        # Match "Add X to experience" / "Include X in work experience" / "Mention X"
+        kw_match = re.search(
+            r"(?:Add|Include|Mention|Integrate)\s+([A-Za-z0-9\.\-\#\+\s]+?)\s+(?:to|in|into)\s+(?:your\s+)?(?:work\s+)?experience",
+            sug, re.IGNORECASE
+        )
+        if kw_match:
+            approved_keywords.append(kw_match.group(1).strip())
+            
+        # Match "Emphasize X" / "Highlight X"
+        emph_match = re.search(
+            r"(?:Emphasize|Highlight|Prioritize|Feature)\s+([A-Za-z0-9\.\-\#\+\s]+?)(?:\s+(?:in|across|throughout)\s+|$)",
+            sug, re.IGNORECASE
+        )
+        if emph_match:
+            emphasis_keywords.append(emph_match.group(1).strip())
+            
+        # Match "Reorder skills to prioritize X" / "Move X to top of skills"
+        reorder_match = re.search(
+            r"(?:Reorder|Prioritize|Move)\s+([A-Za-z0-9\.\-\#\+\s]+?)\s+(?:to\s+(?:the\s+)?(?:top|front|beginning)|first|higher)",
+            sug, re.IGNORECASE
+        )
+        if reorder_match:
+            priority_skill = reorder_match.group(1).strip()
+            if priority_skill in skills_list:
+                skills_list.remove(priority_skill)
+                skills_list.insert(0, priority_skill)
+            elif priority_skill.lower() in [s.lower() for s in skills_list]:
+                # Case-insensitive match
+                for idx, s in enumerate(skills_list):
+                    if s.lower() == priority_skill.lower():
+                        skills_list.pop(idx)
+                        skills_list.insert(0, s)
+                        break
+                        
     for skill in approved_skills:
         if skill not in skills_list:
             skills_list.append(skill)
@@ -498,6 +549,12 @@ def optimize_resume_raw(
         "certifications": resume_analysis.get("certifications", []),
         "languages": resume_analysis.get("languages", [])
     }
+    
+    # Inject extracted suggestion metadata for LLM context
+    if approved_keywords:
+        clean_resume["keywords_to_integrate"] = approved_keywords
+    if emphasis_keywords:
+        clean_resume["emphasis_keywords"] = emphasis_keywords
     
     # Ensure nested objects are dictionary lists, not string lists
     if clean_resume["experience"] and isinstance(clean_resume["experience"][0], str):
@@ -654,11 +711,111 @@ def generate_cover_letter(
         HumanMessage(content="Write the cover letter.")
     ])
 
+    from datetime import datetime as _dt
+
     content = response.content.strip()
-    # Split paragraphs by double newline and wrap in <p> tags
     paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
-    html_paragraphs = "".join([f"<p>{p}</p>" for p in paragraphs])
-    return f"<div class='cover-letter'>{html_paragraphs}</div>"
+
+    candidate_name = resume_analysis.get('name', 'Candidate') if resume_analysis else 'Candidate'
+    company_name = job_analysis.get('company', '') if job_analysis else ''
+    role_name = job_analysis.get('role', 'the position') if job_analysis else 'the position'
+    today_date = _dt.now().strftime("%B %d, %Y")
+
+    # Build salutation
+    if company_name and company_name.lower() not in ['target company', 'unknown', '']:
+        salutation = f"Dear {company_name} Hiring Team,"
+    else:
+        salutation = "Dear Hiring Manager,"
+
+    # Check if the first paragraph already contains a salutation
+    if paragraphs and any(paragraphs[0].lower().startswith(s) for s in ['dear ', 'to whom']):
+        salutation = paragraphs[0]
+        paragraphs = paragraphs[1:]
+
+    # Check if the last paragraph is a closing
+    closing_text = "Sincerely,"
+    if paragraphs and any(word in paragraphs[-1].lower() for word in ['sincerely', 'regards', 'respectfully', 'best wishes']):
+        closing_text = paragraphs[-1]
+        paragraphs = paragraphs[:-1]
+
+    paragraphs_html = "".join([f'<p class="body-paragraph">{p}</p>' for p in paragraphs])
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cover Letter — {candidate_name}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,600;0,8..60,700;1,8..60,600&display=swap" rel="stylesheet">
+  <style>
+    body {{
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #334155;
+      background-color: #f8fafc;
+      margin: 0;
+      padding: 2rem 1rem;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }}
+    .letter-page {{
+      max-width: 750px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 3.5rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      border-radius: 8px;
+      box-sizing: border-box;
+    }}
+    .letter-date {{
+      text-align: right;
+      font-size: 0.875rem;
+      color: #64748b;
+      margin-bottom: 2rem;
+      font-family: monospace;
+    }}
+    .letter-salutation {{
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 1.25rem;
+    }}
+    .body-paragraph {{
+      font-size: 0.925rem;
+      line-height: 1.7;
+      color: #334155;
+      margin: 0 0 1.25rem 0;
+      text-align: justify;
+    }}
+    .letter-closing {{
+      margin-top: 2rem;
+      font-size: 0.95rem;
+      color: #334155;
+    }}
+    .letter-signature {{
+      margin-top: 0.5rem;
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #0f172a;
+    }}
+    @media print {{
+      body {{ background: #fff; padding: 0; margin: 0; }}
+      .letter-page {{ box-shadow: none; border-radius: 0; padding: 2rem; max-width: 100%; }}
+    }}
+  </style>
+</head>
+<body>
+  <div class="letter-page">
+    <div class="letter-date">{today_date}</div>
+    <div class="letter-salutation">{salutation}</div>
+    {paragraphs_html}
+    <div class="letter-closing">{closing_text}</div>
+    <div class="letter-signature">{candidate_name}</div>
+  </div>
+</body>
+</html>"""
+
+    return html.strip()
 
 
 # ── Recruiter Email Generation ────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import * as api from "@/services/api";
 import InputStep from "./InputStep";
 import SuggestionsStep from "./SuggestionsStep";
 import ExportStep from "./ExportStep";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface AnalyzerProps {
   onLoading: (loading: boolean, text?: string) => void;
@@ -23,6 +24,7 @@ export default function Analyzer({
   initialReviewResult = null,
   initialStep = 1,
 }: AnalyzerProps) {
+  const { showSuccess, showError, showWarning } = useNotifications();
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(initialAnalysis ? initialStep : 1);
 
   // Master Profile states
@@ -67,7 +69,7 @@ export default function Analyzer({
 
   const handleFetchUrl = async () => {
     if (!jobUrl.trim()) {
-      alert("Please paste a job link URL first.");
+      showWarning("Please paste a job link URL first.");
       return;
     }
     onLoading(true, "Crawling job posting details using Jina Reader...");
@@ -76,7 +78,7 @@ export default function Analyzer({
       setJobDescription(text);
       setJobUrl("");
     } catch (err: any) {
-      alert(err.message || "Failed to reach Jina Reader.");
+      showError(err.message || "Failed to reach Jina Reader.");
     } finally {
       onLoading(false);
     }
@@ -84,11 +86,11 @@ export default function Analyzer({
 
   const handleAnalyze = async () => {
     if (!jobDescription.trim()) {
-      alert("Please paste the job description or crawl it using a job URL.");
+      showWarning("Please paste the job description or crawl it using a job URL.");
       return;
     }
     if (!useMasterProfile && !selectedFile && !resumeText.trim()) {
-      alert("Please upload a resume file, paste your resume text, or use your Master Profile.");
+      showWarning("Please upload a resume file, paste your resume text, or use your Master Profile.");
       return;
     }
 
@@ -110,7 +112,7 @@ export default function Analyzer({
       setSelectedSuggestions(new Set(data.suggestions));
       setWizardStep(2);
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message);
     } finally {
       onLoading(false);
     }
@@ -144,35 +146,35 @@ export default function Analyzer({
       setReviewResult(data);
       setWizardStep(3);
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message);
     } finally {
       onLoading(false);
     }
   };
 
-  const handleSaveApplication = async () => {
+  const handleSaveApplication = async (currentScore?: number, currentVersion?: number) => {
     if (!reviewResult || !lastAnalysis) return;
     try {
       await api.saveApplication({
         job_title: lastAnalysis.job_title,
         company: lastAnalysis.company,
-        ats_score: reviewResult.current_ats_score,
+        ats_score: currentScore !== undefined ? currentScore : reviewResult.current_ats_score,
         verdict: reviewResult.verdict,
-        resume_version: reviewResult.resume_version,
+        resume_version: currentVersion !== undefined ? currentVersion : reviewResult.resume_version,
         status: "Applied",
         session_id: currentSession || lastAnalysis.session_id || undefined,
       });
-      alert("✓ Application saved to your analytics history!");
+      showSuccess("Application saved to your analytics history!");
       resetInputs();
       onNavigateDashboard();
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message);
     }
   };
 
   const handleResumeSession = async (sid: string) => {
     if (!sid.trim()) {
-      alert("Please provide a valid session ID.");
+      showWarning("Please provide a valid session ID.");
       return;
     }
     onLoading(true, "Retrieving historical analysis session...");
@@ -218,7 +220,7 @@ export default function Analyzer({
         setWizardStep(2);
       }
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message);
     } finally {
       onLoading(false);
     }
@@ -275,6 +277,7 @@ export default function Analyzer({
       {wizardStep === 3 && reviewResult && lastAnalysis && (
         <ExportStep
           reviewResult={reviewResult}
+          setReviewResult={setReviewResult}
           analysis={lastAnalysis}
           activeStyle={activeStyle}
           sessionId={currentSession || ""}

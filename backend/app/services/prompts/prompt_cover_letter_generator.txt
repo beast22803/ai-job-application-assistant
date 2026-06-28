@@ -25,6 +25,8 @@ PARAGRAPH 1 — Opening (2–3 sentences):
   State the candidate's most relevant qualification or strongest matched skill.
   Do NOT use "I am writing to apply for..." — it is clichéd. Open with a direct, confident statement.
   Example opening: "As a full-stack developer with 1.5 years of production experience in Angular and TypeScript, I am applying for the Frontend Developer position at [Company]."
+  
+  IMPORTANT: Do NOT include a salutation ("Dear...") or closing/sign-off ("Sincerely,") in your output. The system will add these automatically. Start directly with the first paragraph's content.
 
 PARAGRAPH 2 — Evidence (4–5 sentences):
   Connect the candidate's actual experience to the role's specific requirements.
@@ -61,3 +63,6 @@ STRICT PROHIBITIONS
 - Do NOT use these banned phrases: "I am writing to apply", "I am a passionate", "I am a fast learner", "I would be a great fit", "I am excited to", "Please find attached", "To whom it may concern".
 - Do NOT add JSON, markdown, or formatting — plain paragraphs only.
 - Do NOT exceed 180 words.
+- Do NOT include a salutation line ("Dear Hiring Manager," etc.) — the system adds this automatically.
+- Do NOT include a closing line ("Sincerely," "Best regards," etc.) — the system adds this automatically.
+- Do NOT include the candidate's name at the end — the system adds this automatically.

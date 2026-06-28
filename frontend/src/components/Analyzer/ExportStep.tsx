@@ -7,13 +7,15 @@ import VerdictBadge from "@/components/ui/VerdictBadge";
 import RefinementChat from "./RefinementChat";
 import * as api from "@/services/api";
 import { diffLines } from "@/lib/diff";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface ExportStepProps {
   reviewResult: ReviewResult;
+  setReviewResult: React.Dispatch<React.SetStateAction<ReviewResult | null>>;
   analysis: AnalysisResult;
   activeStyle: string;
   sessionId: string;
-  onSaveApplication: () => void;
+  onSaveApplication: (currentScore?: number, currentVersion?: number) => void;
   onStartNew: () => void;
 }
 
@@ -42,12 +44,14 @@ const stripHtml = (html: string): string => {
 
 export default function ExportStep({
   reviewResult,
+  setReviewResult,
   analysis,
   activeStyle,
   sessionId,
   onSaveApplication,
   onStartNew,
 }: ExportStepProps) {
+  const { showSuccess, showError, showWarning, showInfo } = useNotifications();
   const [showRefinement, setShowRefinement] = useState(false);
   const [activeAsset, setActiveAsset] = useState<"resume" | "cover_letter" | "email">("resume");
 
@@ -80,6 +84,7 @@ export default function ExportStep({
   const [currentVersionNum, setCurrentVersionNum] = useState(reviewResult.resume_version);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const isEditorInput = useRef(false);
 
   // Debounced live ATS scoring call
   useEffect(() => {
@@ -126,6 +131,7 @@ export default function ExportStep({
       doc.head.appendChild(styleEl);
 
       const handleInput = () => {
+        isEditorInput.current = true;
         const currentHtml = "<!DOCTYPE html>\n<html>" + doc.documentElement.innerHTML + "</html>";
         setRefinedResume(currentHtml);
       };
@@ -137,13 +143,32 @@ export default function ExportStep({
     }
   }, [isEditMode, editorTab]);
 
+  // Sync external refinedResume changes (e.g., from chat) to the visual editor iframe
+  useEffect(() => {
+    if (!isEditMode || editorTab !== "visual") return;
+    if (isEditorInput.current) {
+      isEditorInput.current = false;
+      return;
+    }
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return;
+    doc.open();
+    doc.write(refinedResume);
+    doc.close();
+    if (doc.body) {
+      doc.body.contentEditable = "true";
+    }
+  }, [refinedResume]);
+
   const loadVersions = async () => {
     setLoadingVersions(true);
     try {
       const data = await api.getResumeVersions(sessionId);
       setVersionsList(data.versions);
     } catch (err: any) {
-      alert("Failed to load versions: " + err.message);
+      showError("Failed to load versions: " + err.message);
     } finally {
       setLoadingVersions(false);
     }
@@ -155,16 +180,22 @@ export default function ExportStep({
       const data = await api.saveResumeVersion(sessionId, refinedResume);
       setCurrentVersionNum(data.resume_version);
       
-      // Update reviewResult object's score and version
-      reviewResult.resume_version = data.resume_version;
-      reviewResult.current_ats_score = data.ats_score;
-      reviewResult.optimized_resume = refinedResume;
-      reviewResult.validation = data.validation || reviewResult.validation;
+      // Update parent reviewResult state cleanly
+      setReviewResult(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          resume_version: data.resume_version,
+          current_ats_score: data.ats_score,
+          optimized_resume: refinedResume,
+          validation: data.validation || prev.validation
+        };
+      });
       
-      alert(`✓ Version ${data.resume_version} saved successfully!`);
+      showSuccess(`Version ${data.resume_version} saved successfully!`);
       loadVersions();
     } catch (err: any) {
-      alert("Failed to save version snapshot: " + err.message);
+      showError("Failed to save version snapshot: " + err.message);
     } finally {
       setIsSavingVersion(false);
     }
@@ -187,18 +218,24 @@ export default function ExportStep({
       setLiveMissingSkills(data.validation?.missing_skills || []);
       setCurrentVersionNum(data.resume_version);
       
-      // Update reviewResult object's score and version
-      reviewResult.resume_version = data.resume_version;
-      reviewResult.current_ats_score = data.ats_score;
-      reviewResult.optimized_resume = data.resume_html;
-      reviewResult.validation = data.validation || reviewResult.validation;
+      // Update parent reviewResult state cleanly
+      setReviewResult(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          resume_version: data.resume_version,
+          current_ats_score: data.ats_score,
+          optimized_resume: data.resume_html,
+          validation: data.validation || prev.validation
+        };
+      });
       
       await loadVersions();
       setShowVersionsDrawer(false);
       setIsEditMode(false);
-      alert(`✓ Restored to new Version ${data.resume_version}!`);
+      showSuccess(`Restored to new Version ${data.resume_version}!`);
     } catch (err: any) {
-      alert("Failed to restore version: " + err.message);
+      showError("Failed to restore version: " + err.message);
     } finally {
       setIsRestoring(false);
     }
@@ -223,7 +260,11 @@ export default function ExportStep({
   const handleCopyEmail = async () => {
     const text = `Subject: ${refinedEmailSubject}\n\n${refinedEmailBody}`;
     const ok = await copyToClipboard(text);
-    alert(ok ? "✓ Recruiter email copied to clipboard!" : "Failed to copy. Please select text manually.");
+    if (ok) {
+      showSuccess("Recruiter email copied to clipboard!");
+    } else {
+      showError("Failed to copy. Please select text manually.");
+    }
   };
 
   const handleDownloadPdf = async () => {
@@ -282,7 +323,7 @@ export default function ExportStep({
         printWindow.focus();
         printWindow.print();
       } else {
-        alert("Failed to export PDF automatically. Please check your pop-up permissions.");
+        showWarning("Failed to export PDF automatically. Please check your pop-up permissions.");
       }
     } finally {
       setDownloadingPdf(false);
@@ -302,12 +343,49 @@ export default function ExportStep({
         setOriginalText(data.resume_text);
         setShowDiff(true);
       } catch (err: any) {
-        alert("Failed to retrieve original resume: " + err.message);
+        showError("Failed to retrieve original resume: " + err.message);
       } finally {
         setLoadingDiff(false);
       }
     } else {
       setShowDiff(true);
+    }
+  };
+
+  const handleDownloadCoverLetterPdf = async () => {
+    const filename = `CoverLetter_${activeStyle}.pdf`;
+    try {
+      const container = document.createElement("div");
+      container.style.position = "absolute";
+      container.style.left = "-9999px";
+      container.style.top = "-9999px";
+      container.innerHTML = refinedCoverLetter;
+      const pageEl = container.querySelector(".letter-page");
+      const targetElement = pageEl || container;
+      document.body.appendChild(container);
+
+      await loadScript(
+        "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+      );
+      const opt = {
+        margin: [15, 15, 15, 15],
+        filename: filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2.5, useCORS: true, letterRendering: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+      };
+      // @ts-ignore
+      await window.html2pdf().from(targetElement).set(opt).save();
+      document.body.removeChild(container);
+    } catch (err: any) {
+      console.error("Cover letter PDF export failed:", err);
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(refinedCoverLetter);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+      }
     }
   };
 
@@ -349,7 +427,7 @@ export default function ExportStep({
             {showRefinement ? "✕ Close Studio" : "💬 Refine Chat"}
           </button>
           <button
-            onClick={onSaveApplication}
+            onClick={() => onSaveApplication(liveAtsScore, currentVersionNum)}
             className="bg-[#FF4500] text-[#F5F5F5] hover:bg-[#FF4500]/90 px-5 py-2.5 rounded-lg font-mono text-xs font-bold tracking-wider uppercase transition-all whitespace-nowrap"
           >
             ✓ Save to Dashboard
@@ -567,16 +645,25 @@ export default function ExportStep({
               <span className="text-[#F5F5F5] font-semibold text-sm">
                 Tailored Cover Letter ({activeStyle} Style)
               </span>
-              <button
-                onClick={() => downloadHtmlDocument(refinedCoverLetter, `CoverLetter_${activeStyle}.html`)}
-                className="border border-[#222222] text-[#F5F5F5] hover:bg-white/5 hover:border-white px-3 py-1.5 rounded-sm font-mono text-[9px] tracking-wider uppercase transition-all"
-              >
-                Download HTML
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => downloadHtmlDocument(refinedCoverLetter, `CoverLetter_${activeStyle}.html`)}
+                  className="border border-[#222222] text-[#F5F5F5] hover:bg-white/5 hover:border-white px-3 py-1.5 rounded-sm font-mono text-[9px] tracking-wider uppercase transition-all"
+                >
+                  Download HTML
+                </button>
+                <button
+                  onClick={handleDownloadCoverLetterPdf}
+                  className="bg-[#F5F5F5] text-[#050505] hover:bg-[#FF4500] hover:text-[#F5F5F5] px-3 py-1.5 rounded-sm font-mono text-[9px] font-bold tracking-wider uppercase transition-all"
+                >
+                  Download PDF
+                </button>
+              </div>
             </div>
-            <div
-              className="bg-[#1A1A1E] text-white/95 p-8 rounded-lg min-h-[200px] text-xs leading-relaxed border border-[#222222]"
-              dangerouslySetInnerHTML={{ __html: refinedCoverLetter }}
+            <iframe
+              srcDoc={refinedCoverLetter}
+              className="w-full min-h-[500px] rounded-lg border border-[#222222] bg-white shadow-inner"
+              title="Tailored Cover Letter Preview"
             />
           </div>
         </div>
@@ -676,9 +763,9 @@ export default function ExportStep({
               <div className="bg-[#0C0C0C] border border-[#222222] rounded-xl p-8">
                 <span className="font-mono text-[9px] text-[#8E8E93] tracking-widest uppercase block mb-3">Optimization Results</span>
                 <div className="flex items-baseline gap-2.5">
-                  <span className="text-3xl font-black">{liveAtsScore}%</span>
+                  <span className="text-3xl font-black">{reviewResult.current_ats_score}%</span>
                   {(() => {
-                    const gain = liveAtsScore - reviewResult.previous_ats_score;
+                    const gain = reviewResult.current_ats_score - reviewResult.previous_ats_score;
                     return (
                       <span className={`${gain >= 0 ? 'text-[#30D158]' : 'text-[#FF453A]'} font-mono text-xs font-semibold`}>
                         {gain >= 0 ? `+${gain}%` : `${gain}%`} {gain >= 0 ? 'Improvement' : 'Decrease'}

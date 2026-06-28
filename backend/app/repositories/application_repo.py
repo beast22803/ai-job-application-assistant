@@ -330,3 +330,73 @@ def update_session_chat_history(session_id: str, user_id: str, chat_history: lis
         return False
     finally:
         db.close()
+
+def update_session_refined_asset(
+    session_id: str,
+    asset_type: str,
+    content: str,
+    user_id: str,
+) -> bool:
+    """Update a specific refined asset (resume, cover_letter, email) in the session store."""
+    import re
+    db = SessionLocal()
+    try:
+        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        if not store:
+            return False
+            
+        if asset_type == "resume":
+            store.optimized_resume = content
+            # Also update review_result JSON optimized_resume field if it exists
+            if store.review_result_json:
+                try:
+                    rr = json.loads(store.review_result_json)
+                    rr["optimized_resume"] = content
+                    store.review_result_json = json.dumps(rr)
+                except Exception:
+                    pass
+        elif asset_type == "cover_letter":
+            store.cover_letter = content
+            # Also update review_result cover_letter if it exists
+            if store.review_result_json:
+                try:
+                    rr = json.loads(store.review_result_json)
+                    rr["cover_letter"] = content
+                    store.review_result_json = json.dumps(rr)
+                except Exception:
+                    pass
+        elif asset_type == "email":
+            # Email content is expected to be subject and body separated or as a dict/string
+            # We can parse Subject: prefix
+            subject = ""
+            body = content
+            subject_match = re.match(r"^Subject:\s*(.+)$", content, re.IGNORECASE | re.MULTILINE)
+            if subject_match:
+                subject = subject_match.group(1).strip()
+                body = re.sub(r"^Subject:.*?\n+", "", content, flags=re.IGNORECASE).strip()
+            
+            if subject:
+                store.email_subject = subject
+            store.email_body = body
+            
+            if store.review_result_json:
+                try:
+                    rr = json.loads(store.review_result_json)
+                    if "recruiter_email" not in rr:
+                        rr["recruiter_email"] = {}
+                    if subject:
+                        rr["recruiter_email"]["subject"] = subject
+                    rr["recruiter_email"]["body"] = body
+                    store.review_result_json = json.dumps(rr)
+                except Exception:
+                    pass
+                    
+        store.timestamp = datetime.utcnow()
+        db.commit()
+        return True
+    except Exception as e:
+        print(f"Error updating refined asset for {session_id}: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()

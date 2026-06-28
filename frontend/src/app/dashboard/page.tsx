@@ -6,9 +6,11 @@ import * as api from "@/services/api";
 import type { DashboardData, ActiveSession } from "@/types";
 import DashboardComponent from "@/components/Dashboard";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { showError } = useNotifications();
 
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     total_analyzed: 0,
@@ -46,7 +48,7 @@ export default function DashboardPage() {
       await api.deleteSession(sessionId);
       fetchDashboard();
     } catch (err: any) {
-      alert(err.message || "Failed to delete session.");
+      showError(err.message || "Failed to delete session.");
     }
   };
 
@@ -55,7 +57,7 @@ export default function DashboardPage() {
       await api.abandonSession(sessionId);
       fetchDashboard();
     } catch (err: any) {
-      alert(err.message || "Failed to archive session.");
+      showError(err.message || "Failed to archive session.");
     }
   };
 
@@ -64,7 +66,7 @@ export default function DashboardPage() {
       await api.updateApplicationStatus(appId, status);
       fetchDashboard();
     } catch (err: any) {
-      alert(err.message || "Failed to update application status.");
+      showError(err.message || "Failed to update application status.");
     }
   };
 

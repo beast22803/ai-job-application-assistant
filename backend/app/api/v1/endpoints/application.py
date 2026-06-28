@@ -177,6 +177,13 @@ def refine_asset(req: RefineRequest, current_user: User = Depends(get_current_us
             history=req.history or [],
             user_memory=current_user.user_memory or ""
         )
+        # Persist the refined content to session storage in DB
+        application_repo.update_session_refined_asset(
+            session_id=req.session_id,
+            asset_type=req.asset_type,
+            content=refined,
+            user_id=current_user.id
+        )
         return {"status": "success", "refined_content": refined}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Refinement failed: {e}")

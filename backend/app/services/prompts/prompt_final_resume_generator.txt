@@ -43,7 +43,8 @@ header
   → Format: "Full Name | Email | Phone | Location | LinkedIn"
   → Only include fields present in the original resume. Omit fields that are not present.
   → Use " | " as separator.
-  → Example: "Varshit Madisetti | varshit@email.com | +49 155 1234 | Darmstadt, Germany | linkedin.com/in/varshitmadisetti"
+  → Example: "John Doe | john.doe@email.com | +1 555 123 4567 | San Francisco, CA | linkedin.com/in/johndoe"
+  → CRITICAL: Under no circumstances should you copy the name "John Doe", email "john.doe@email.com", or phone "+1 555 123 4567" from this example. You MUST extract the name, email, phone, and contact details from the "Original Resume" data below.
 
 summary
   → 2–4 sentences. Maximum 60 words.
@@ -67,13 +68,14 @@ experience (array of strings)
   → Each entry is a single formatted string for one role.
   → CRITICAL: You must only include actual work experience entries that exist in the original resume's experience section. Do NOT include education entries, degrees, universities, or projects under the experience section. Keep the experience section strictly 1-to-1 with the candidate's actual job history in the original resume.
   → Format each string as:
-    "[Job Title] · [Company] · [Start]–[End]\n[bullet1]\n[bullet2]\n[bullet3]"
+    "JOB_TITLE · COMPANY · START_DATE–END_DATE\n- BULLET_1\n- BULLET_2\n- BULLET_3"
+  → CRITICAL: Do NOT output literal square brackets `[` or `]` anywhere in the values. They are placeholders. For example, output "Full Stack Engineer · Fresh Prints · 2025–2026" NOT "[Full Stack Engineer] at [Fresh Prints]".
   → Write 2–4 bullet points per role.
   → BULLET POINT RULES (strict):
     - Start with a strong action verb from this list ONLY:
       Built, Developed, Designed, Implemented, Engineered, Delivered, Optimised, Refactored, Integrated, Automated, Reduced, Improved, Led, Mentored, Deployed, Migrated, Architected, Tested, Debugged, Configured
     - Ensure a diverse use of action verbs. Do not start every bullet with "Built" or "Developed".
-    - Follow this pattern: [Action Verb] + [specific technology/tool] + [what was achieved or delivered]
+    - Follow this pattern: Action Verb + specific technology/tool + what was achieved or delivered
     - Include a measurable outcome ONLY if one is explicitly stated in the original resume. Do not invent them.
     - Integrate ATS keywords naturally into the descriptions without sounding robotic.
     - Do NOT use passive voice ("was responsible for", "helped with").
@@ -84,15 +86,18 @@ experience (array of strings)
 
 projects (array of strings)
   → Each entry is a single formatted string for one project.
-  → Format: "[Project Name] — [tech1, tech2, tech3]\n[1–2 sentence description]"
+  → Format: "PROJECT_NAME — TECH_STACK_SEPARATED_BY_COMMAS\nDESCRIPTION_TEXT"
+  → CRITICAL: Do NOT output literal square brackets `[` or `]` anywhere in the values.
   → Description must use original resume language — do not fabricate new achievements.
   → Apply any accepted suggestion that instructs adding project emphasis.
-  → If projects array is empty in original resume: return []. Do NOT create projects.
+  → CRITICAL: Do NOT use placeholder values like "PROJECT_NAME", "TECH_STACK" or "DESCRIPTION_TEXT" in the output. Map the actual projects from the original resume data. If there are no projects in the original resume, return an empty array [].
 
 education (array of strings)
   → Each entry is a single formatted string.
-  → Format: "[Degree] · [Institution] · [Year]"
-  → Example: "B.E. Computer Science & Engineering · Osmania University · 2021–2025 | GPA: 8.26/10"
+  → Format: "DEGREE · INSTITUTION · YEAR"
+  → CRITICAL: Do NOT output literal square brackets `[` or `]` anywhere in the values.
+  → Example: "M.S. Computer Science · Stanford University · 2020–2022 | GPA: 3.9/4.0"
+  → CRITICAL: Under no circumstances should you copy "Stanford University" or "Osmania University" from this example unless they are present in the "Original Resume". Map the actual education entries (all of them) from the "Original Resume" data below. Do not omit any degree or institution from the original resume list (e.g. if the original resume lists both a Master's and a Bachelor's, include both in the array).
   → Include GPA only if present in original resume.
   → If education array is empty in original resume: return [].
 
@@ -122,3 +127,10 @@ STRICT ANTI-HALLUCINATION RULES
 9. Do NOT add commentary, notes, or warnings inside the JSON.
 10. NEVER change the company names of the candidate's past work experiences to the target company name. All past companies and employers must remain exactly as they appear in the original resume. Do NOT change them.
 11. Do NOT convert education entries (such as degrees or university attendance) or project entries (such as academic, personal, or open-source projects) into work experience entries. Keep work experience mapping strictly 1-to-1 with the original parsed experience. All experience entries in the output must correspond to actual work experiences/jobs from the original resume's experience list, preserving their exact company name and date range.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+KEYWORD INTEGRATION INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+If the resume data contains a "keywords_to_integrate" field, you MUST naturally weave these keywords into the relevant experience bullet points and summary. Do not force them — integrate them only where they truthfully apply based on existing experience.
+
+If the resume data contains an "emphasis_keywords" field, ensure these skills/technologies appear prominently in the summary, are placed early in the skills array, and are mentioned in the most relevant experience bullets.

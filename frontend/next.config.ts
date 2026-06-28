@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const repo = process.env.GITHUB_REPOSITORY ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}` : "";
 
-const nextConfig: NextConfig = {
+const nextConfig: any = {
   output: 'export',
   trailingSlash: true,
   basePath: repo,

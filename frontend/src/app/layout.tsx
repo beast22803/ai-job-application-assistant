@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 import Header from "@/components/Header";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 
 export default function RootLayout({
   children,
@@ -35,17 +36,19 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-[#050505] text-[#F5F5F5] font-sans relative">
         <AuthProvider>
-          {/* Film grain overlay */}
-          <div
-            className="pointer-events-none fixed inset-0 z-50 opacity-[0.012]"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23g)'/%3E%3C/svg%3E")`
-            }}
-          />
-          <Header />
-          <main className="flex-1 w-full flex flex-col pt-24">
-            {children}
-          </main>
+          <NotificationProvider>
+            {/* Film grain overlay */}
+            <div
+              className="pointer-events-none fixed inset-0 z-50 opacity-[0.012]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23g)'/%3E%3C/svg%3E")`
+              }}
+            />
+            <Header />
+            <main className="flex-1 w-full flex flex-col pt-24">
+              {children}
+            </main>
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>
