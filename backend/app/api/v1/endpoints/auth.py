@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.auth import hash_password, verify_password, create_access_token, get_current_user
 from app.models.user import User
-from app.schemas.auth import UserRegister, UserLogin, Token, UserResponse
+from app.schemas.auth import UserRegister, UserLogin, Token, UserResponse, ForgotPasswordRequest, ResetPasswordRequest
 
 router = APIRouter()
 
@@ -77,3 +77,55 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+import random
+MOCK_RESET_CODES: dict[str, str] = {}
+
+@router.post("/forgot-password")
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    email_lower = req.email.lower().strip()
+    user = db.query(User).filter(User.email == email_lower).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account associated with this email address."
+        )
+    # Generate 6-digit reset code
+    code = f"{random.randint(100000, 999999)}"
+    MOCK_RESET_CODES[email_lower] = code
+    print(f"\n[DEV MODE] Forgot password reset code for {email_lower}: {code}\n")
+    return {
+        "status": "success",
+        "message": f"A password reset code has been sent (Simulated Code: {code})",
+        # We return it in response for easy frontend local testing since we don't have SMTP server
+        "code": code
+    }
+
+@router.post("/reset-password")
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    email_lower = req.email.lower().strip()
+    user = db.query(User).filter(User.email == email_lower).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account associated with this email address."
+        )
+        
+    expected_code = MOCK_RESET_CODES.get(email_lower)
+    if not expected_code or req.code.strip() != expected_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset code."
+        )
+        
+    # Update password
+    user.password_hash = hash_password(req.new_password)
+    db.commit()
+    
+    # Remove code from memory
+    MOCK_RESET_CODES.pop(email_lower, None)
+    
+    return {
+        "status": "success",
+        "message": "Password successfully reset! Please login with your new password."
+    }

@@ -53,6 +53,32 @@ export async function registerUser(data: any): Promise<AuthResponse> {
   return res.json();
 }
 
+export async function forgotPassword(email: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to submit request.");
+  }
+  return res.json();
+}
+
+export async function resetPassword(data: any): Promise<any> {
+  const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to reset password.");
+  }
+  return res.json();
+}
+
 export async function getCurrentUser(): Promise<AuthUser> {
   const res = await fetch(`${API_BASE}/api/auth/me`, {
     method: "GET",
