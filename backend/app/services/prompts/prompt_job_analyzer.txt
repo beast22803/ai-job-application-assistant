@@ -38,8 +38,8 @@ role
   → If not found: return "".
 
 company
-  → Extract the hiring company name.
-  → If the company name is not explicitly mentioned (e.g. anonymous recruiter postings), return "Target Company".
+  → Extract the hiring company name or the recruiting agency/platform name (e.g., if the text says "Developer at develop" or "posted by develop", extract "develop").
+  → Only return "Target Company" if absolutely no company or agency name is mentioned anywhere in the job description or metadata.
 
 job_level
   → Must be exactly ONE of: "Intern" | "Junior" | "Mid-Level" | "Senior" | "Lead" | "Manager" | "Director" | "Unknown"
