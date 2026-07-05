@@ -9,7 +9,7 @@ from app.schemas.application import (
     VersionRequest, RefineRequest, FetchUrlRequest,
     UpdateStatusRequest
 )
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_current_user_optional
 from app.models.user import User
 import app.services.analyzer as az
 import app.services.generator as gen
@@ -19,29 +19,32 @@ router = APIRouter()
 # ── Session Retrieval ─────────────────────────────────────────────────────────
 
 @router.get("/session/{session_id}")
-def get_session_data(session_id: str, current_user: User = Depends(get_current_user)):
-    session = application_repo.get_session(session_id, current_user.id)
+def get_session_data(session_id: str, current_user: Optional[User] = Depends(get_current_user_optional)):
+    user_id = current_user.id if current_user else None
+    session = application_repo.get_session(session_id, user_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     return {"status": "success", "session": session}
 
 @router.delete("/session/{session_id}")
-def delete_session(session_id: str, current_user: User = Depends(get_current_user)):
-    success = application_repo.delete_session(session_id, current_user.id)
+def delete_session(session_id: str, current_user: Optional[User] = Depends(get_current_user_optional)):
+    user_id = current_user.id if current_user else None
+    success = application_repo.delete_session(session_id, user_id)
     if not success:
         raise HTTPException(status_code=404, detail="Session not found or could not be deleted")
     return {"status": "success"}
 
 @router.patch("/session/{session_id}/abandon")
-def abandon_session(session_id: str, current_user: User = Depends(get_current_user)):
-    success = application_repo.abandon_session(session_id, current_user.id)
+def abandon_session(session_id: str, current_user: Optional[User] = Depends(get_current_user_optional)):
+    user_id = current_user.id if current_user else None
+    success = application_repo.abandon_session(session_id, user_id)
     if not success:
         raise HTTPException(status_code=404, detail="Session not found or could not be abandoned")
     return {"status": "success"}
 
 # ── Live ATS Scoring ──────────────────────────────────────────────────────────
 
-def _score_resume_internal(session_id: str, resume_html: str, user_id: str):
+def _score_resume_internal(session_id: str, resume_html: str, user_id: Optional[str]):
     session = application_repo.get_session(session_id, user_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -71,15 +74,17 @@ def _score_resume_internal(session_id: str, resume_html: str, user_id: str):
     }
 
 @router.post("/session/{session_id}/score")
-def score_resume(session_id: str, req: ScoreRequest, current_user: User = Depends(get_current_user)):
-    return _score_resume_internal(session_id, req.resume_html, current_user.id)
+def score_resume(session_id: str, req: ScoreRequest, current_user: Optional[User] = Depends(get_current_user_optional)):
+    user_id = current_user.id if current_user else None
+    return _score_resume_internal(session_id, req.resume_html, user_id)
 
 # ── Resume Version Management ────────────────────────────────────────────────
 
 @router.post("/session/{session_id}/version")
-def save_resume_version(session_id: str, req: VersionRequest, current_user: User = Depends(get_current_user)):
+def save_resume_version(session_id: str, req: VersionRequest, current_user: Optional[User] = Depends(get_current_user_optional)):
     # Check ownership
-    session = application_repo.get_session(session_id, current_user.id)
+    user_id = current_user.id if current_user else None
+    session = application_repo.get_session(session_id, user_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
         
@@ -98,9 +103,10 @@ def save_resume_version(session_id: str, req: VersionRequest, current_user: User
     return {"status": "success", "version": version_num}
 
 @router.get("/session/{session_id}/versions")
-def get_resume_versions(session_id: str, current_user: User = Depends(get_current_user)):
+def get_resume_versions(session_id: str, current_user: Optional[User] = Depends(get_current_user_optional)):
     # Check ownership
-    session = application_repo.get_session(session_id, current_user.id)
+    user_id = current_user.id if current_user else None
+    session = application_repo.get_session(session_id, user_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
         
@@ -108,9 +114,10 @@ def get_resume_versions(session_id: str, current_user: User = Depends(get_curren
     return {"status": "success", "versions": versions}
 
 @router.post("/session/{session_id}/version/{version_num}/restore")
-def restore_version(session_id: str, version_num: int, current_user: User = Depends(get_current_user)):
+def restore_version(session_id: str, version_num: int, current_user: Optional[User] = Depends(get_current_user_optional)):
     # Check ownership
-    session = application_repo.get_session(session_id, current_user.id)
+    user_id = current_user.id if current_user else None
+    session = application_repo.get_session(session_id, user_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
         
@@ -120,7 +127,7 @@ def restore_version(session_id: str, version_num: int, current_user: User = Depe
         raise HTTPException(status_code=404, detail="Version not found")
     
     # Score the restored version to update session data
-    _score_resume_internal(session_id, target["resume_html"] or target["resume_text"], current_user.id)
+    _score_resume_internal(session_id, target["resume_html"] or target["resume_text"], user_id)
     return {"status": "success"}
 
 # ── Application Tracking ─────────────────────────────────────────────────────
@@ -157,32 +164,35 @@ class ChatHistoryRequest(BaseModel):
     history: list
 
 @router.post("/session/{session_id}/chat")
-def save_chat_history(session_id: str, req: ChatHistoryRequest, current_user: User = Depends(get_current_user)):
-    success = application_repo.update_session_chat_history(session_id, current_user.id, req.history)
+def save_chat_history(session_id: str, req: ChatHistoryRequest, current_user: Optional[User] = Depends(get_current_user_optional)):
+    user_id = current_user.id if current_user else None
+    success = application_repo.update_session_chat_history(session_id, user_id, req.history)
     if not success:
         raise HTTPException(status_code=404, detail="Session not found or could not save chat history")
     return {"status": "success"}
 
 @router.post("/refine")
-def refine_asset(req: RefineRequest, current_user: User = Depends(get_current_user)):
+def refine_asset(req: RefineRequest, current_user: Optional[User] = Depends(get_current_user_optional)):
     """Refine a resume, cover letter, or email via conversational AI."""
-    session = application_repo.get_session(req.session_id, current_user.id)
+    user_id = current_user.id if current_user else None
+    session = application_repo.get_session(req.session_id, user_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     try:
+        user_memory = current_user.user_memory if (current_user and current_user.user_memory) else ""
         refined = gen.refine_content(
             asset_type=req.asset_type,
             current_content=req.current_content,
             instruction=req.instruction,
             history=req.history or [],
-            user_memory=current_user.user_memory or ""
+            user_memory=user_memory
         )
         # Persist the refined content to session storage in DB
         application_repo.update_session_refined_asset(
             session_id=req.session_id,
             asset_type=req.asset_type,
             content=refined,
-            user_id=current_user.id
+            user_id=user_id
         )
         return {"status": "success", "refined_content": refined}
     except Exception as e:
@@ -191,8 +201,9 @@ def refine_asset(req: RefineRequest, current_user: User = Depends(get_current_us
 # ── Review & Generate Package ─────────────────────────────────────────────────
 
 @router.post("/review")
-def review_resume(req: ReviewRequest, current_user: User = Depends(get_current_user)):
-    session = application_repo.get_session(req.session_id, current_user.id)
+def review_resume(req: ReviewRequest, current_user: Optional[User] = Depends(get_current_user_optional)):
+    user_id = current_user.id if current_user else None
+    session = application_repo.get_session(req.session_id, user_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
@@ -205,6 +216,7 @@ def review_resume(req: ReviewRequest, current_user: User = Depends(get_current_u
     if req.custom_instructions:
         instructions += f"User note: {req.custom_instructions}."
 
+    user_memory = current_user.user_memory if (current_user and current_user.user_memory) else ""
     new_resume, resume_data = gen.optimize_resume_raw(
         original_resume=session["resume_text"],
         job_desc=session["job_description"],
@@ -213,7 +225,7 @@ def review_resume(req: ReviewRequest, current_user: User = Depends(get_current_u
         custom_instructions=instructions,
         job_analysis=session["job_analysis"],
         resume_analysis=session["resume_analysis"],
-        user_memory=current_user.user_memory or ""
+        user_memory=user_memory
     )
     
     # Deterministic parser avoids an expensive LLM call and ensures correct mapping of generated resume
@@ -231,7 +243,7 @@ def review_resume(req: ReviewRequest, current_user: User = Depends(get_current_u
             job_analysis=session["job_analysis"],
             resume_analysis=new_resume_analysis,
             ats_results=new_ats_results,
-            user_memory=current_user.user_memory or ""
+            user_memory=user_memory
         )
         future_email = executor.submit(
             gen.generate_recruiter_email,
@@ -242,7 +254,7 @@ def review_resume(req: ReviewRequest, current_user: User = Depends(get_current_u
             job_analysis=session["job_analysis"],
             resume_analysis=new_resume_analysis,
             ats_results=new_ats_results,
-            user_memory=current_user.user_memory or ""
+            user_memory=user_memory
         )
         cover_letter = future_cl.result()
         recruiter_email = future_email.result()
@@ -308,7 +320,7 @@ def review_resume(req: ReviewRequest, current_user: User = Depends(get_current_u
         email_subject=recruiter_email.get("subject", "") if isinstance(recruiter_email, dict) else "",
         email_body=recruiter_email.get("body", "") if isinstance(recruiter_email, dict) else "",
         review_result=return_data,
-        user_id=current_user.id,
+        user_id=user_id,
     )
 
     return return_data
@@ -316,7 +328,7 @@ def review_resume(req: ReviewRequest, current_user: User = Depends(get_current_u
 # ── URL Fetching ──────────────────────────────────────────────────────────────
 
 @router.post("/fetch-url")
-def fetch_url(req: FetchUrlRequest, current_user: User = Depends(get_current_user)):
+def fetch_url(req: FetchUrlRequest, current_user: Optional[User] = Depends(get_current_user_optional)):
     import requests
     from bs4 import BeautifulSoup
     try:

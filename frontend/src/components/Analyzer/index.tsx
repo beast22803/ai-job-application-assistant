@@ -154,6 +154,11 @@ export default function Analyzer({
 
   const handleSaveApplication = async (currentScore?: number, currentVersion?: number) => {
     if (!reviewResult || !lastAnalysis) return;
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      showWarning("Please log in or create an account to save applications to your dashboard history.");
+      return;
+    }
     try {
       await api.saveApplication({
         job_title: lastAnalysis.job_title,

@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Optional
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user_optional
 from app.models.user import User
 
 import app.services.analyzer as az
@@ -18,17 +18,21 @@ async def analyze(
     resume_text: Optional[str] = Form(None),
     resume_file: Optional[UploadFile] = File(None),
     use_master_profile: Optional[str] = Form(None),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    user_id = current_user.id
-    user_repo.log_event("ANALYZE_START", user_id, {"has_file": resume_file is not None})
+    user_id = current_user.id if current_user else None
+    if user_id:
+        user_repo.log_event("ANALYZE_START", user_id, {"has_file": resume_file is not None})
 
     parsed_resume_text = ""
     if use_master_profile == "true":
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Master profile lookup requires authentication.")
         profile = master_repo.get_master_profile(user_id)
         total_entries = len(profile.get("experiences", [])) + len(profile.get("projects", [])) + len(profile.get("skills", [])) + len(profile.get("education", []))
         if total_entries == 0:
-            user_repo.log_event("ANALYZE_FAILED", user_id, {"error": "Empty master profile"})
+            if user_id:
+                user_repo.log_event("ANALYZE_FAILED", user_id, {"error": "Empty master profile"})
             raise HTTPException(status_code=400, detail="Master profile is empty. Please add your career data first.")
         parsed_resume_text = mm.compile_profile_text(profile)
     elif resume_file:
@@ -36,16 +40,19 @@ async def analyze(
             content = await resume_file.read()
             parsed_resume_text = az.extract_resume_text(resume_file.filename, content)
         except Exception as e:
-            user_repo.log_event("ANALYZE_FAILED", user_id, {"error": str(e)})
+            if user_id:
+                user_repo.log_event("ANALYZE_FAILED", user_id, {"error": str(e)})
             raise HTTPException(status_code=400, detail=f"Failed to read resume file: {e}")
     elif resume_text:
         parsed_resume_text = resume_text.strip()
     else:
-        user_repo.log_event("ANALYZE_FAILED", user_id, {"error": "No resume provided"})
+        if user_id:
+            user_repo.log_event("ANALYZE_FAILED", user_id, {"error": "No resume provided"})
         raise HTTPException(status_code=400, detail="Please provide a resume file or text.")
 
     if not parsed_resume_text:
-        user_repo.log_event("ANALYZE_FAILED", user_id, {"error": "Empty resume text"})
+        if user_id:
+            user_repo.log_event("ANALYZE_FAILED", user_id, {"error": "Empty resume text"})
         raise HTTPException(status_code=400, detail="Resume text content is empty.")
 
     try:
@@ -54,7 +61,8 @@ async def analyze(
         ats_results = az.run_ats_scoring(job_analysis, resume_analysis, job_description, parsed_resume_text)
         suggestions = az.generate_suggestions(job_analysis, resume_analysis, ats_results)
     except Exception as e:
-        user_repo.log_event("ANALYZE_FAILED", user_id, {"error": str(e)})
+        if user_id:
+            user_repo.log_event("ANALYZE_FAILED", user_id, {"error": str(e)})
         raise HTTPException(status_code=500, detail=f"AI Analysis failed: {e}")
 
     session_id = f"session_{uuid.uuid4().hex[:10]}"
@@ -69,7 +77,8 @@ async def analyze(
         user_id=user_id
     )
 
-    user_repo.log_event("ANALYZE_SUCCESS", user_id, {"session_id": session_id, "score": ats_results["final_score"]})
+    if user_id:
+        user_repo.log_event("ANALYZE_SUCCESS", user_id, {"session_id": session_id, "score": ats_results["final_score"]})
 
     return {
         "session_id": session_id,

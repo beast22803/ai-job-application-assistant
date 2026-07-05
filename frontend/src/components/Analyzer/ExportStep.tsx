@@ -163,6 +163,8 @@ export default function ExportStep({
   }, [refinedResume]);
 
   const loadVersions = async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
     setLoadingVersions(true);
     try {
       const data = await api.getResumeVersions(sessionId);
@@ -175,6 +177,11 @@ export default function ExportStep({
   };
 
   const handleSaveVersion = async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      showWarning("Please log in or create an account to save version snapshots.");
+      return;
+    }
     setIsSavingVersion(true);
     try {
       const data = await api.saveResumeVersion(sessionId, refinedResume);

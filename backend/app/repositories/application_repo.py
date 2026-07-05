@@ -218,10 +218,13 @@ def get_job_applications(user_id: str) -> list[dict]:
     finally:
         db.close()
 
-def delete_session(session_id: str, user_id: str) -> bool:
+def delete_session(session_id: str, user_id: str | None) -> bool:
     db = SessionLocal()
     try:
-        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        if user_id:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        else:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id.is_(None)).first()
         if store:
             # Delete related resume versions first
             db.query(ResumeVersion).filter(ResumeVersion.session_id == session_id).delete()
@@ -259,12 +262,15 @@ def update_session_generated_assets(
     email_subject: str,
     email_body: str,
     review_result: dict,
-    user_id: str,
+    user_id: str | None,
 ) -> bool:
     """Persist generated assets into the session and advance to step 3."""
     db = SessionLocal()
     try:
-        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        if user_id:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        else:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id.is_(None)).first()
         if not store:
             return False
         store.optimized_resume = optimized_resume
@@ -283,11 +289,14 @@ def update_session_generated_assets(
     finally:
         db.close()
 
-def complete_session(session_id: str, user_id: str) -> bool:
+def complete_session(session_id: str, user_id: str | None) -> bool:
     """Mark a session as completed (hides from active list)."""
     db = SessionLocal()
     try:
-        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        if user_id:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        else:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id.is_(None)).first()
         if not store:
             return False
         store.status = "completed"
@@ -300,11 +309,14 @@ def complete_session(session_id: str, user_id: str) -> bool:
     finally:
         db.close()
 
-def abandon_session(session_id: str, user_id: str) -> bool:
+def abandon_session(session_id: str, user_id: str | None) -> bool:
     """Mark a session as abandoned (soft-hide from active list without data loss)."""
     db = SessionLocal()
     try:
-        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        if user_id:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        else:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id.is_(None)).first()
         if not store:
             return False
         store.status = "abandoned"
@@ -317,11 +329,14 @@ def abandon_session(session_id: str, user_id: str) -> bool:
     finally:
         db.close()
 
-def update_session_chat_history(session_id: str, user_id: str, chat_history: list) -> bool:
+def update_session_chat_history(session_id: str, user_id: str | None, chat_history: list) -> bool:
     """Save user refinement chat history in the session."""
     db = SessionLocal()
     try:
-        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        if user_id:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        else:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id.is_(None)).first()
         if not store:
             return False
         store.chat_history_json = json.dumps(chat_history)
@@ -338,13 +353,16 @@ def update_session_refined_asset(
     session_id: str,
     asset_type: str,
     content: str,
-    user_id: str,
+    user_id: str | None,
 ) -> bool:
     """Update a specific refined asset (resume, cover_letter, email) in the session store."""
     import re
     db = SessionLocal()
     try:
-        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        if user_id:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        else:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id.is_(None)).first()
         if not store:
             return False
             
