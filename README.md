@@ -1,5 +1,8 @@
 # 💼 JobAnalyser: AI Job Application Assistant
 
+### 🌐 Live Application: [https://beast22803.github.io/ai-job-application-assistant/](https://beast22803.github.io/ai-job-application-assistant/)
+### 🔌 Backend API Server: [https://ai-job-application-backend-intl.onrender.com](https://ai-job-application-backend-intl.onrender.com)
+
 JobAnalyser (AI Job Application Assistant) is a production-ready, full-stack application designed to automate, customize, and optimize job applications. It leverages a state-of-the-art **LangGraph** self-improvement agent loop, a modern **Next.js** frontend, a **FastAPI** backend, and a flexible database layer supporting both local **SQLite** and cloud-hosted **MySQL** (e.g., Aiven.io).
 
 With JobAnalyser, job seekers can tailor resumes, generate high-converting cover letters, compose follow-up emails, test ATS matching scores, and track their applications over time.
