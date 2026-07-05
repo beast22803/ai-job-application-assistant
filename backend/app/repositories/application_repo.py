@@ -39,10 +39,13 @@ def save_session(
     finally:
         db.close()
 
-def get_session(session_id: str, user_id: str) -> dict | None:
+def get_session(session_id: str, user_id: str | None) -> dict | None:
     db = SessionLocal()
     try:
-        store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        if user_id:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id == user_id).first()
+        else:
+            store = db.query(SessionStore).filter(SessionStore.session_id == session_id, SessionStore.user_id.is_(None)).first()
         if not store:
             return None
         result = {
