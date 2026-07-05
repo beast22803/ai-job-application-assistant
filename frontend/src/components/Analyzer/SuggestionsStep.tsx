@@ -101,7 +101,10 @@ export default function SuggestionsStep({
                     checked={isSelected}
                     onChange={() => {}}
                     className="mt-1 w-4 h-4 accent-[#FF4500]"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSuggestion(sugg);
+                    }}
                   />
                   <span className="text-xs leading-relaxed">{sugg}</span>
                 </div>
