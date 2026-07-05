@@ -19,7 +19,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///agent_memory.db")
 _DEFAULT_PROVIDER    = os.getenv("PROVIDER", "openrouter")
 _OPENROUTER_BASE     = "https://openrouter.ai/api/v1"
 _OPENROUTER_MODEL    = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
-_OPENROUTER_FALLBACK = os.getenv("OPENROUTER_FALLBACK_MODEL", "nousresearch/hermes-3-llama-3.1-405b:free")
+_OPENROUTER_FALLBACK = os.getenv("OPENROUTER_FALLBACK_MODEL", "google/gemma-2-9b-it:free")
 _OLLAMA_BASE         = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 _OLLAMA_MODEL        = os.getenv("OLLAMA_MODEL", "llama3.2")
 _MAX_ITERATIONS      = int(os.getenv("MAX_ITERATIONS", "1"))
@@ -40,7 +40,7 @@ def _make_openrouter(model: str, api_key: str, temperature: float):
             openai.APIStatusError,
             openai.APIConnectionError,
         ),
-        stop_after_attempt=6,
+        stop_after_attempt=3,
         wait_exponential_jitter=True,
     )
 

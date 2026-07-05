@@ -56,8 +56,13 @@ async def analyze(
         raise HTTPException(status_code=400, detail="Resume text content is empty.")
 
     try:
-        job_analysis = az.analyze_job_description(job_description)
-        resume_analysis = az.analyze_resume(parsed_resume_text)
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_job = executor.submit(az.analyze_job_description, job_description)
+            future_resume = executor.submit(az.analyze_resume, parsed_resume_text)
+            job_analysis = future_job.result()
+            resume_analysis = future_resume.result()
+            
         ats_results = az.run_ats_scoring(job_analysis, resume_analysis, job_description, parsed_resume_text)
         suggestions = az.generate_suggestions(job_analysis, resume_analysis, ats_results)
     except Exception as e:
