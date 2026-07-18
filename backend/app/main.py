@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.endpoints import profile, analyzer, dashboard, application, auth, admin
 from app.core.database import Base, engine
 
+# Lifespan context manager for FastAPI
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Ensure tables are created
