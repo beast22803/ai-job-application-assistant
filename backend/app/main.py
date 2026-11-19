@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import InterfaceError, OperationalError
 
-from app.api.v1.endpoints import profile, analyzer, dashboard, application, auth, admin
+from app.api.v1.endpoints import profile, analyzer, dashboard, application, auth, admin, pdf
 from app.core.database import check_database, init_db
 
 logger = logging.getLogger("app.main")
@@ -52,6 +52,7 @@ app.include_router(analyzer.router, prefix="/api", tags=["Analyzer"])
 app.include_router(profile.router, prefix="/api/profile", tags=["Master Profile"])
 app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])
 app.include_router(application.router, prefix="/api", tags=["Application"])
+app.include_router(pdf.router, prefix="/api", tags=["PDF"])
 
 # Healthcheck — always 200 so the hosting platform keeps the instance alive; the body
 # shows whether the database is reachable.

@@ -14,6 +14,7 @@ REQUIRED SCHEMA
   "header": "string",
   "summary": "string",
   "skills": ["string"],
+  "soft_skills": ["string"],
   "experience": ["string"],
   "projects": ["string"],
   "education": ["string"]
@@ -63,6 +64,11 @@ skills (array of strings)
   → Deduplicate: if the same skill appears twice under different names, keep the canonical form.
   → Include all skills from the original resume's skills list AND any skills requested to be added by the approved suggestions (e.g., if a suggestion asks to add a skill, you MUST add it to the skills array).
   → Maximum 20 skills.
+
+soft_skills (array of strings)
+  → Only soft skills (e.g. "Teamwork", "Communication") that the original resume explicitly lists or states.
+  → If the original resume lists none, return [].  Never invent soft skills.
+  → Maximum 8.
 
 experience (array of strings)
   → Each entry is a single formatted string for one role.

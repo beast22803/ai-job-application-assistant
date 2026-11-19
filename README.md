@@ -150,12 +150,32 @@ Configure these values in your `backend/.env` file:
 ### LLM Configurations
 | Key | Default | Description |
 |---|---|---|
-| `PROVIDER` | `openrouter` | Set to `openrouter` (cloud) or `ollama` (local). |
+| `PROVIDER` | `openrouter` | `openrouter` (cloud), `ollama` (local) or `opencode` (local [opencode](https://opencode.ai) CLI/server). |
 | `OPENROUTER_API_KEY` | - | Your API key from [OpenRouter](https://openrouter.ai/). |
-| `OPENROUTER_MODEL` | `meta-llama/llama-3.3-70b-instruct:free` | Primary cloud model to use. |
+| `OPENROUTER_MODEL` | `openai/gpt-oss-120b:free` | Primary cloud model. Use a large model; free slugs change often — check [openrouter.ai/models](https://openrouter.ai/models). |
+| `OPENROUTER_FALLBACK_MODELS` | `meta-llama/llama-3.3-70b-instruct:free` | Comma-separated fallbacks, tried in order. Keep these large too — small fallbacks produce garbled resumes. |
+| `OPENCODE_MODEL` | *(opencode's default)* | `provider/model` passed to opencode, e.g. `openrouter/openai/gpt-oss-120b`. List yours with `opencode models`. |
+| `OPENCODE_VARIANT` | - | *(Optional)* Reasoning effort for models that support it, e.g. `high`. |
+| `OPENCODE_SERVER_URL` | - | *(Optional)* URL of a running `opencode serve` (e.g. `http://127.0.0.1:4096`). If unset, `opencode run` is started as a subprocess per call. |
+| `OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD` | `opencode` / - | Basic-auth credentials for `opencode serve`, if you secured it. |
+| `OPENCODE_BIN` / `OPENCODE_TIMEOUT` | `opencode` / `300` | Path to the CLI and per-call timeout in seconds. |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Your local Ollama endpoint. |
 | `OLLAMA_MODEL` | `llama3.2` | Local model to invoke (ensure you `ollama pull <model>`). |
 | `MAX_ITERATIONS` | `1` | Number of critique/self-improvement loops the agent performs. |
+
+#### Using opencode as the LLM (local backend only)
+opencode must be installed on the same machine as the backend, so this works when you run the backend on your own computer (it cannot be used from Render):
+```bash
+opencode models                      # find the provider/model you want, e.g. openrouter/openai/gpt-oss-120b
+opencode serve --port 4096 &         # optional but faster than spawning the CLI per call
+cd backend
+PROVIDER=opencode OPENCODE_MODEL=openrouter/openai/gpt-oss-120b OPENCODE_VARIANT=high \
+OPENCODE_SERVER_URL=http://127.0.0.1:4096 uvicorn app.main:app --port 8000
+```
+Tools are disabled for these calls so opencode behaves as a plain text model. If `OPENROUTER_API_KEY` is also set, OpenRouter is used as a fallback when opencode fails.
+
+### LaTeX PDFs
+The optimized resume and the cover letter are typeset with LaTeX: the backend parses the current HTML, fills a LaTeX template (all text is escaped) and compiles it with `pdflatex`; the UI previews and downloads that PDF (`POST /api/pdf`, `GET /api/pdf/status`). The recruiter email stays plain text. It needs `texlive-latex-base texlive-latex-recommended texlive-fonts-recommended lmodern` — already installed by `backend/Dockerfile`. If `pdflatex` is missing the UI automatically falls back to the HTML preview and browser-rendered PDF.
 
 ### Database & Helpers
 | Key | Default | Description |
@@ -175,11 +195,11 @@ The frontend contains a GitHub Actions workflow configured in [deploy.yml](file:
 * Make sure `NEXT_PUBLIC_API_URL` is set to your deployed backend URL in your repository's GitHub Actions Secrets.
 
 ### Backend Deployment (Render)
-1. Deploy the `backend` folder as a **Web Service** on Render (Python environment).
-2. Set the start command to:
+1. Deploy the `backend` folder as a **Web Service** on Render. Choose the **Docker** runtime (uses `backend/Dockerfile`, which installs LaTeX) to get LaTeX PDFs. With the plain **Python** runtime everything works except LaTeX PDFs (the UI falls back to the HTML preview); its start command is:
    ```bash
    python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
    ```
+   Render cannot change the runtime of an existing service, so for Docker create a new Web Service from the same repo (root directory `backend`) and move the environment variables over.
 3. Set your environment variables (like `DATABASE_URL`, `OPENROUTER_API_KEY`, etc.) in the Render dashboard.
 
 ### Database Deployment (Aiven.io MySQL)
