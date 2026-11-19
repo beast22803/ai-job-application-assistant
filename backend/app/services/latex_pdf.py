@@ -221,9 +221,9 @@ _RESUME_PREAMBLE = r"""\documentclass[%(size)spt,a4paper]{article}
 \renewcommand{\labelitemi}{\textbullet}
 \setlength{\leftmargini}{1.1em}
 \newcommand{\resumesection}[1]{%%
-  \vspace{10pt}{\large\bfseries\scshape\color{accent}#1}\par\vspace{2pt}%%
-  {\color{accent}\hrule height 0.5pt}\vspace{5pt}}
-\newcommand{\tight}{\setlength{\itemsep}{1.5pt}\setlength{\topsep}{1pt}\setlength{\parsep}{0pt}\setlength{\partopsep}{0pt}}
+  \vspace{%(sec_before).1fpt}{\large\bfseries\scshape\color{accent}#1}\par\vspace{2pt}%%
+  {\color{accent}\hrule height 0.5pt}\vspace{%(sec_after).1fpt}}
+\newcommand{\tight}{\setlength{\itemsep}{%(item).1fpt}\setlength{\topsep}{1pt}\setlength{\parsep}{0pt}\setlength{\partopsep}{0pt}}
 """
 
 
@@ -235,8 +235,8 @@ def _bullets(items: list[str]) -> str:
     return "\\vspace{-4pt}\\begin{itemize}\\tight\n" + body + "\n\\end{itemize}\n"
 
 
-def build_resume_tex(doc: dict, font_size: int = 10) -> str:
-    out = [_RESUME_PREAMBLE % {"size": font_size}, r"\begin{document}", ""]
+def build_resume_tex(doc: dict, font_size: int = 10, spacing: float = 1.0) -> str:
+    out = [_RESUME_PREAMBLE % {"size": font_size, "sp": spacing, "sec_before": 10 * spacing, "sec_after": 5 * spacing, "item": 1.5 * spacing}, r"\begin{document}", ""]
 
     name = tex_escape(doc.get("name") or "Candidate")
     out.append(rf"\begin{{center}}{{\fontsize{{24}}{{28}}\selectfont\bfseries\scshape\color{{accent}} {name}}}\end{{center}}")
@@ -263,7 +263,7 @@ def build_resume_tex(doc: dict, font_size: int = 10) -> str:
         out.append(r"\resumesection{Work Experience}")
         for i, e in enumerate(doc["experience"]):
             if i:
-                out.append(r"\vspace{5pt}")
+                out.append(rf"\vspace{{{5 * spacing:.1f}pt}}")
             out.append(rf"\noindent\textbf{{{tex_escape(e['title'])}}}\hfill{{\small\color{{muted}} {tex_escape(e['dates'])}}}\par")
             if e.get("company"):
                 out.append(rf"{{\color{{accent}}\itshape {tex_escape(e['company'])}}}\par")
@@ -273,7 +273,7 @@ def build_resume_tex(doc: dict, font_size: int = 10) -> str:
         out.append(r"\resumesection{Projects}")
         for i, p in enumerate(doc["projects"]):
             if i:
-                out.append(r"\vspace{4pt}")
+                out.append(rf"\vspace{{{4 * spacing:.1f}pt}}")
             tech = rf"\hfill{{\small\color{{muted}}\itshape {tex_escape(p['tech'])}}}" if p.get("tech") else ""
             out.append(rf"\noindent\textbf{{{tex_escape(p['name'])}}}{tech}\par")
             if p.get("desc"):
@@ -283,7 +283,7 @@ def build_resume_tex(doc: dict, font_size: int = 10) -> str:
         out.append(r"\resumesection{Education}")
         for i, e in enumerate(doc["education"]):
             if i:
-                out.append(r"\vspace{3pt}")
+                out.append(rf"\vspace{{{3 * spacing:.1f}pt}}")
             year = rf"\hfill{{\small\color{{muted}} {tex_escape(e['year'])}}}" if e.get("year") else ""
             out.append(rf"\noindent\textbf{{{tex_escape(e['degree'])}}}{year}\par")
             if e.get("institution"):
@@ -384,19 +384,29 @@ def _compile_safe(tex: str) -> tuple[bytes, int]:
 
 
 def render_resume_pdf(html: str) -> bytes:
+    """
+    Typeset the resume. Prefer the largest font/spacing that still fits on ONE page so a
+    short resume fills the page; if it cannot fit on one page, use the most compact layout.
+    """
     doc = parse_resume_html(html)
     if not (doc["name"] or doc["experience"] or doc["projects"] or doc["summary"]):
         raise EmptyDocument("The resume has no content that can be typeset.")
-    pdf, pages = _compile_safe(build_resume_tex(doc, 11))
-    if pages > 1:
-        # try a slightly smaller font; keep whichever is shorter
+    candidates = [(12, 1.8), (12, 1.0), (11, 1.8), (11, 1.0), (10, 1.0)]
+    best: tuple[bytes, int] | None = None
+    for size, spacing in candidates:
         try:
-            pdf10, pages10 = _compile_safe(build_resume_tex(doc, 10))
-            if pages10 < pages:
-                pdf = pdf10
+            pdf, pages = _compile_safe(build_resume_tex(doc, size, spacing))
         except LatexCompileError:
-            pass
-    return pdf
+            if best is None and (size, spacing) == candidates[-1]:
+                raise
+            continue
+        if pages == 1:
+            return pdf
+        if best is None or pages < best[1]:
+            best = (pdf, pages)
+    if best is None:
+        raise LatexCompileError("LaTeX compilation failed.")
+    return best[0]
 
 
 def render_cover_letter_pdf(html: str, sender: dict | None = None) -> bytes:

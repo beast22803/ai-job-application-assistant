@@ -897,8 +897,11 @@ def generate_cover_letter(
 
     # Check if the last paragraph is a closing
     closing_text = "Sincerely,"
-    if paragraphs and any(word in paragraphs[-1].lower() for word in ['sincerely', 'regards', 'respectfully', 'best wishes']):
-        closing_text = paragraphs[-1]
+    # (a sign-off is short; keep only its first line — the signature name is added separately)
+    if paragraphs and len(paragraphs[-1]) < 120 and any(
+        word in paragraphs[-1].lower() for word in ['sincerely', 'regards', 'respectfully', 'best wishes']
+    ):
+        closing_text = paragraphs[-1].splitlines()[0].strip() or "Sincerely,"
         paragraphs = paragraphs[:-1]
 
     paragraphs_html = "".join([f'<p class="body-paragraph">{p}</p>' for p in paragraphs])
