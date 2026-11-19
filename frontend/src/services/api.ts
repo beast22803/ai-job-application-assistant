@@ -27,69 +27,83 @@ function authHeaders(): Record<string, string> {
 
 // ── Authentication API ────────────────────────────────────────────────────────
 
-export async function loginUser(credentials: any): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(credentials),
-  });
+/** Error carrying the HTTP status (0 = the server could not be reached at all). */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+const UNREACHABLE_MESSAGE =
+  "Cannot reach the server. It may be starting up or offline — please try again in a minute.";
+
+/** Fetch an auth endpoint and turn network/HTML/5xx failures into readable errors. */
+async function authRequest<T>(path: string, init: RequestInit, fallback: string): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, init);
+  } catch {
+    throw new ApiError(UNREACHABLE_MESSAGE, 0);
+  }
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || "Authentication failed. Check credentials.");
+    let detail: unknown;
+    try {
+      detail = (await res.json())?.detail;
+    } catch {
+      // Non-JSON body (e.g. a gateway's HTML error page) — fall through.
+    }
+    if (typeof detail === "string" && detail) throw new ApiError(detail, res.status);
+    throw new ApiError(
+      res.status >= 500 ? "The server is temporarily unavailable. Please try again shortly." : fallback,
+      res.status
+    );
   }
   return res.json();
 }
 
-export async function registerUser(data: any): Promise<AuthResponse> {
-  const res = await fetch(`${API_BASE}/api/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || "Registration failed.");
-  }
-  return res.json();
+const JSON_HEADERS = { "Content-Type": "application/json" };
+
+export function loginUser(credentials: any): Promise<AuthResponse> {
+  return authRequest<AuthResponse>(
+    "/api/auth/login",
+    { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(credentials) },
+    "Authentication failed. Check credentials."
+  );
 }
 
-export async function forgotPassword(email: string): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || "Failed to submit request.");
-  }
-  return res.json();
+export function registerUser(data: any): Promise<AuthResponse> {
+  return authRequest<AuthResponse>(
+    "/api/auth/register",
+    { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(data) },
+    "Registration failed."
+  );
 }
 
-export async function resetPassword(data: any): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || "Failed to reset password.");
-  }
-  return res.json();
+export function forgotPassword(email: string): Promise<any> {
+  return authRequest<any>(
+    "/api/auth/forgot-password",
+    { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ email }) },
+    "Failed to submit request."
+  );
 }
 
-export async function getCurrentUser(): Promise<AuthUser> {
-  const res = await fetch(`${API_BASE}/api/auth/me`, {
-    method: "GET",
-    headers: {
-      ...authHeaders(),
-    },
-  });
-  if (!res.ok) {
-    throw new Error("Session expired or invalid.");
-  }
-  return res.json();
+export function resetPassword(data: any): Promise<any> {
+  return authRequest<any>(
+    "/api/auth/reset-password",
+    { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(data) },
+    "Failed to reset password."
+  );
+}
+
+export function getCurrentUser(): Promise<AuthUser> {
+  return authRequest<AuthUser>(
+    "/api/auth/me",
+    { method: "GET", headers: { ...authHeaders() } },
+    "Session expired or invalid."
+  );
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
