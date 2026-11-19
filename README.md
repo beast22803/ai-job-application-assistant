@@ -150,10 +150,10 @@ Configure these values in your `backend/.env` file:
 ### LLM Configurations
 | Key | Default | Description |
 |---|---|---|
-| `PROVIDER` | `openrouter` | `openrouter` (cloud), `ollama` (local) or `opencode` ([opencode](https://opencode.ai) CLI/server; locally or in the Docker image). |
+| `PROVIDER` | `openrouter` | `openrouter` (cloud; **recommended** — fastest, parallel calls, fits a 512 MB instance), `ollama` (local) or `opencode` ([opencode](https://opencode.ai) CLI/server; locally or in the Docker image). |
 | `OPENROUTER_API_KEY` | - | Your API key from [OpenRouter](https://openrouter.ai/). |
-| `OPENROUTER_MODEL` | `openai/gpt-oss-120b:free` | Primary cloud model. Use a large model; free slugs change often — check [openrouter.ai/models](https://openrouter.ai/models). |
-| `OPENROUTER_FALLBACK_MODELS` | `meta-llama/llama-3.3-70b-instruct:free` | Comma-separated fallbacks, tried in order. Keep these large too — small fallbacks produce garbled resumes. |
+| `OPENROUTER_MODEL` | `nvidia/nemotron-3.5-super-vl:free` | Primary cloud model. Use a large model; free slugs change often — check [openrouter.ai/models](https://openrouter.ai/models). |
+| `OPENROUTER_FALLBACK_MODELS` | `nvidia/nemotron-3-ultra-550b-a55b:free` | Comma-separated fallbacks, tried in order. Keep these large too — small fallbacks produce garbled resumes. |
 | `OPENCODE_MODEL` | *(opencode's default)* | `provider/model` passed to opencode, e.g. `opencode/nemotron-3.5-super-vl-free` (no key needed) or `openrouter/nvidia/nemotron-3.5-super-vl:free` (uses `OPENROUTER_API_KEY`). List yours with `opencode models`. |
 | `OPENCODE_VARIANT` | - | *(Optional)* Reasoning effort for models that support it, e.g. `high`. |
 | `OPENCODE_SERVER_URL` | - | *(Optional)* URL of a running `opencode serve` (e.g. `http://127.0.0.1:4096`). If unset, `opencode run` is started as a subprocess per call. |

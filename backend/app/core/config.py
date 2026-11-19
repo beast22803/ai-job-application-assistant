@@ -21,11 +21,11 @@ _OPENROUTER_BASE     = "https://openrouter.ai/api/v1"
 # Large models only: a small fallback model (e.g. a 9B) is what produces garbled resumes.
 # Slugs on OpenRouter change often — verify them at https://openrouter.ai/models and, for
 # reliability, point OPENROUTER_MODEL at a paid large model.
-_OPENROUTER_MODEL    = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-120b:free")
+_OPENROUTER_MODEL    = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3.5-super-vl:free")
 _OPENROUTER_FALLBACKS = [
     m.strip()
     for m in (os.getenv("OPENROUTER_FALLBACK_MODELS") or os.getenv("OPENROUTER_FALLBACK_MODEL")
-              or "meta-llama/llama-3.3-70b-instruct:free").split(",")
+              or "nvidia/nemotron-3-ultra-550b-a55b:free").split(",")
     if m.strip()
 ]
 _OPENCODE_MODEL      = os.getenv("OPENCODE_MODEL", "")          # 'provider/model', e.g. openrouter/openai/gpt-oss-120b
