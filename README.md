@@ -161,7 +161,10 @@ Configure these values in your `backend/.env` file:
 | Key | Default | Description |
 |---|---|---|
 | `DATABASE_URL` | `sqlite:///agent_memory.db` | Connection string. For MySQL cloud deployment, use: `mysql+pymysql://<user>:<password>@<host>:<port>/<dbname>` |
+| `DATABASE_SSL_CA` | - | *(Optional)* Path to the provider's CA certificate PEM. When set, the MySQL server certificate is verified; otherwise `ssl-mode=REQUIRED` gives an encrypted but unverified connection. |
 | `JINA_API_KEY` | - | *(Optional)* Key to parse job postings from raw web URLs. |
+
+The backend accepts provider-style URLs as-is, e.g. Aiven's `mysql://user:pass@host:port/defaultdb?ssl-mode=REQUIRED` (it is rewritten to the PyMySQL driver and the `ssl-mode` option is translated). If the database is unreachable the API still starts; `GET /api/health` then reports `{"status": "degraded", "database": "down"}` and database-backed endpoints answer `503` until it is back.
 
 ---
 

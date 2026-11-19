@@ -29,7 +29,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(currentUser);
         } catch (err) {
           console.error("Failed to restore session:", err);
-          localStorage.removeItem("authToken");
+          // Only discard the token when the server says it is invalid. If the backend is
+          // unreachable or returned a 5xx, keep it so the user is not logged out by an outage.
+          const status = (err as { status?: number })?.status;
+          if (status === 401 || status === 403 || status === 404) {
+            localStorage.removeItem("authToken");
+          }
           setUser(null);
         }
       }
