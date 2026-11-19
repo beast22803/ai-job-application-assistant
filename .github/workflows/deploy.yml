@@ -37,7 +37,10 @@ jobs:
 
       - name: Build Next.js
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          # Backend base URL baked into the static site. Defaults to the Render backend;
+          # set the repository variable API_URL (Settings > Secrets and variables >
+          # Actions > Variables) to point the site somewhere else.
+          NEXT_PUBLIC_API_URL: ${{ vars.API_URL || 'https://ai-job-application-backend-intl.onrender.com' }}
         run: npm run build
         working-directory: ./frontend
 
@@ -53,7 +56,10 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+  # Optional Fly.io backend deploy. Skipped unless the repository variable DEPLOY_FLY is
+  # set to "true" (the Fly trial ended, so deploys fail until a card is added).
   deploy-backend:
+    if: ${{ vars.DEPLOY_FLY == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
