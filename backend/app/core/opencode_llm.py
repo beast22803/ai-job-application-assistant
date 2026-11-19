@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
 from typing import Any, List, Optional
 
 import requests
@@ -44,6 +45,11 @@ _TOOLS_OFF = {t: False for t in (
 )}
 
 _ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+# Concurrent `opencode run` processes share opencode's SQLite state and fail with
+# "database is locked"; each one also needs several hundred MB of RAM. Run them one
+# at a time (the analyzer otherwise starts two in parallel).
+_CLI_LOCK = threading.Lock()
 
 
 class OpenCodeError(RuntimeError):
@@ -142,7 +148,7 @@ class ChatOpenCode(BaseChatModel):
         if self.variant:
             cmd += ["--variant", self.variant]
         cmd.append(prompt)
-        with tempfile.TemporaryDirectory(prefix="opencode_") as scratch:
+        with _CLI_LOCK, tempfile.TemporaryDirectory(prefix="opencode_") as scratch:
             try:
                 proc = subprocess.run(cmd, cwd=scratch, capture_output=True, timeout=self.timeout, stdin=subprocess.DEVNULL)
             except subprocess.TimeoutExpired as e:

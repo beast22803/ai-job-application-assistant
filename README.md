@@ -150,11 +150,11 @@ Configure these values in your `backend/.env` file:
 ### LLM Configurations
 | Key | Default | Description |
 |---|---|---|
-| `PROVIDER` | `openrouter` | `openrouter` (cloud), `ollama` (local) or `opencode` (local [opencode](https://opencode.ai) CLI/server). |
+| `PROVIDER` | `openrouter` | `openrouter` (cloud), `ollama` (local) or `opencode` ([opencode](https://opencode.ai) CLI/server; locally or in the Docker image). |
 | `OPENROUTER_API_KEY` | - | Your API key from [OpenRouter](https://openrouter.ai/). |
 | `OPENROUTER_MODEL` | `openai/gpt-oss-120b:free` | Primary cloud model. Use a large model; free slugs change often — check [openrouter.ai/models](https://openrouter.ai/models). |
 | `OPENROUTER_FALLBACK_MODELS` | `meta-llama/llama-3.3-70b-instruct:free` | Comma-separated fallbacks, tried in order. Keep these large too — small fallbacks produce garbled resumes. |
-| `OPENCODE_MODEL` | *(opencode's default)* | `provider/model` passed to opencode, e.g. `openrouter/openai/gpt-oss-120b`. List yours with `opencode models`. |
+| `OPENCODE_MODEL` | *(opencode's default)* | `provider/model` passed to opencode, e.g. `opencode/nemotron-3.5-super-vl-free` (no key needed) or `openrouter/nvidia/nemotron-3.5-super-vl:free` (uses `OPENROUTER_API_KEY`). List yours with `opencode models`. |
 | `OPENCODE_VARIANT` | - | *(Optional)* Reasoning effort for models that support it, e.g. `high`. |
 | `OPENCODE_SERVER_URL` | - | *(Optional)* URL of a running `opencode serve` (e.g. `http://127.0.0.1:4096`). If unset, `opencode run` is started as a subprocess per call. |
 | `OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD` | `opencode` / - | Basic-auth credentials for `opencode serve`, if you secured it. |
@@ -163,15 +163,20 @@ Configure these values in your `backend/.env` file:
 | `OLLAMA_MODEL` | `llama3.2` | Local model to invoke (ensure you `ollama pull <model>`). |
 | `MAX_ITERATIONS` | `1` | Number of critique/self-improvement loops the agent performs. |
 
-#### Using opencode as the LLM (local backend only)
-opencode must be installed on the same machine as the backend, so this works when you run the backend on your own computer (it cannot be used from Render):
+#### Using opencode as the LLM
+opencode must be installed on the same machine as the backend. Locally:
 ```bash
-opencode models                      # find the provider/model you want, e.g. openrouter/openai/gpt-oss-120b
+opencode models                      # find the provider/model you want
 opencode serve --port 4096 &         # optional but faster than spawning the CLI per call
 cd backend
-PROVIDER=opencode OPENCODE_MODEL=openrouter/openai/gpt-oss-120b OPENCODE_VARIANT=high \
+PROVIDER=opencode OPENCODE_MODEL=opencode/nemotron-3.5-super-vl-free OPENCODE_VARIANT=high \
 OPENCODE_SERVER_URL=http://127.0.0.1:4096 uvicorn app.main:app --port 8000
 ```
+On Render, use the **Docker** runtime: `backend/Dockerfile` installs a pinned opencode release (`OPENCODE_VERSION` build arg). Set `PROVIDER=opencode`, `OPENCODE_MODEL` and `OPENCODE_VARIANT`, and leave `OPENCODE_SERVER_URL` unset. No `opencode auth login` is needed: `opencode/*-free` models need no key, and `openrouter/...` models read `OPENROUTER_API_KEY` from the environment. Limits measured in the Docker image:
+* **Memory:** each `opencode run` needs ~750–850 MB and the backend peaked at 1.2–1.4 GB during an analysis. Render's 512 MB instances (Free, Starter) get the process OOM-killed (`opencode exited with -9`); use at least a 2 GB instance. CLI calls are serialised to keep this down (and because parallel runs fail with `database is locked`), so analyses are slower than with `PROVIDER=openrouter`.
+* **Free quotas:** `opencode/*-free` models stop with "Free usage limit reached" after a few calls from one machine, and OpenRouter `:free` models allow 50 requests/day per account (1000/day after buying $10 of credits). A shared deployment will hit these quickly.
+* opencode adds no model quality of its own: `openrouter/<model>` through opencode is the same model as `PROVIDER=openrouter` with `OPENROUTER_MODEL=<model>`, which needs far less memory.
+
 Tools are disabled for these calls so opencode behaves as a plain text model. If `OPENROUTER_API_KEY` is also set, OpenRouter is used as a fallback when opencode fails.
 
 ### LaTeX PDFs
@@ -192,7 +197,7 @@ The backend accepts provider-style URLs as-is, e.g. Aiven's `mysql://user:pass@h
 
 ### Frontend Deployment (GitHub Pages)
 The frontend contains a GitHub Actions workflow configured in [deploy.yml](file:///.github/workflows/deploy.yml) that builds and exports static assets to GitHub Pages on every push to `main`. 
-* Make sure `NEXT_PUBLIC_API_URL` is set to your deployed backend URL in your repository's GitHub Actions Secrets.
+* The site calls the backend URL in the repository **variable** `API_URL` (Settings → Secrets and variables → Actions → Variables); without it, it uses the default Render URL in `deploy.yml`. Update it when you move to a new Render service, then re-run the deploy.
 
 ### Backend Deployment (Render)
 1. Deploy the `backend` folder as a **Web Service** on Render. Choose the **Docker** runtime (uses `backend/Dockerfile`, which installs LaTeX) to get LaTeX PDFs. With the plain **Python** runtime everything works except LaTeX PDFs (the UI falls back to the HTML preview); its start command is:
@@ -200,6 +205,7 @@ The frontend contains a GitHub Actions workflow configured in [deploy.yml](file:
    python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
    ```
    Render cannot change the runtime of an existing service, so for Docker create a new Web Service from the same repo (root directory `backend`) and move the environment variables over.
+2. To use opencode there, also set `PROVIDER=opencode`, `OPENCODE_MODEL=opencode/nemotron-3.5-super-vl-free` (or `openrouter/nvidia/nemotron-3.5-super-vl:free`) and `OPENCODE_VARIANT=high` (Docker runtime only).
 3. Set your environment variables (like `DATABASE_URL`, `OPENROUTER_API_KEY`, etc.) in the Render dashboard.
 
 ### Database Deployment (Aiven.io MySQL)
