@@ -8,6 +8,7 @@ import RefinementChat from "./RefinementChat";
 import * as api from "@/services/api";
 import { diffLines } from "@/lib/diff";
 import { useNotifications } from "@/contexts/NotificationContext";
+import LatexPdfPreview, { saveBlob } from "./LatexPdfPreview";
 
 interface ExportStepProps {
   reviewResult: ReviewResult;
@@ -63,6 +64,9 @@ export default function ExportStep({
 
   // PDF Export and Diff States
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  // LaTeX-typeset PDFs from the backend (null = not available, fall back to browser rendering)
+  const [resumePdf, setResumePdf] = useState<Blob | null>(null);
+  const [coverLetterPdf, setCoverLetterPdf] = useState<Blob | null>(null);
   const [showDiff, setShowDiff] = useState(false);
   const [loadingDiff, setLoadingDiff] = useState(false);
   const [originalText, setOriginalText] = useState<string | null>(null);
@@ -275,8 +279,12 @@ export default function ExportStep({
   };
 
   const handleDownloadPdf = async () => {
-    setDownloadingPdf(true);
     const filename = `Resume_v${currentVersionNum}.pdf`;
+    if (resumePdf) {
+      saveBlob(resumePdf, filename);
+      return;
+    }
+    setDownloadingPdf(true);
     
     try {
       const container = document.createElement("div");
@@ -361,6 +369,10 @@ export default function ExportStep({
 
   const handleDownloadCoverLetterPdf = async () => {
     const filename = `CoverLetter_${activeStyle}.pdf`;
+    if (coverLetterPdf) {
+      saveBlob(coverLetterPdf, filename);
+      return;
+    }
     try {
       const container = document.createElement("div");
       container.style.position = "absolute";
@@ -618,10 +630,13 @@ export default function ExportStep({
                 )}
               </div>
             ) : (
-              <iframe
-                srcDoc={refinedResume}
-                className="w-full min-h-[600px] rounded-lg border border-[#222222] bg-white shadow-inner"
+              <LatexPdfPreview
+                sessionId={sessionId}
+                docType="resume"
+                html={refinedResume}
+                className="w-full h-[900px] rounded-lg border border-[#222222] bg-white shadow-inner"
                 title="Optimized Resume Preview"
+                onPdfChange={setResumePdf}
               />
             )}
 
@@ -667,10 +682,13 @@ export default function ExportStep({
                 </button>
               </div>
             </div>
-            <iframe
-              srcDoc={refinedCoverLetter}
-              className="w-full min-h-[500px] rounded-lg border border-[#222222] bg-white shadow-inner"
+            <LatexPdfPreview
+              sessionId={sessionId}
+              docType="cover_letter"
+              html={refinedCoverLetter}
+              className="w-full h-[800px] rounded-lg border border-[#222222] bg-white shadow-inner"
               title="Tailored Cover Letter Preview"
+              onPdfChange={setCoverLetterPdf}
             />
           </div>
         </div>

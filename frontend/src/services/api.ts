@@ -528,3 +528,44 @@ export async function saveChatHistory(sessionId: string, history: any[]): Promis
   }
   return res.json();
 }
+
+
+// ── LaTeX PDF rendering ───────────────────────────────────────────────────────
+
+let latexUnavailable = false;
+
+/**
+ * Ask the backend to typeset the resume / cover letter with LaTeX and return the PDF.
+ * Throws ApiError; status 503 means this server has no LaTeX installed (cached, so the
+ * UI falls back to the HTML preview without retrying on every edit).
+ */
+export async function renderPdf(
+  sessionId: string,
+  docType: "resume" | "cover_letter",
+  html: string
+): Promise<Blob> {
+  if (latexUnavailable) {
+    throw new ApiError("LaTeX is not available on this server.", 503);
+  }
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api/pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ session_id: sessionId, doc_type: docType, html }),
+    });
+  } catch {
+    throw new ApiError(UNREACHABLE_MESSAGE, 0);
+  }
+  if (!res.ok) {
+    let detail = "PDF generation failed.";
+    try {
+      detail = (await res.json()).detail || detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    if (res.status === 503 && /latex/i.test(detail)) latexUnavailable = true;
+    throw new ApiError(detail, res.status);
+  }
+  return res.blob();
+}

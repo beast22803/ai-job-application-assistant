@@ -13,10 +13,25 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.core.config import get_llm
 from app.services.analyzer import load_prompt, _clean_json_output
 
+import html as _html
+
+
+def _html_escape_data(value):
+    """Escape every string in the resume payload so LLM text can never break the markup."""
+    if isinstance(value, str):
+        return _html.escape(value, quote=False)
+    if isinstance(value, list):
+        return [_html_escape_data(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _html_escape_data(v) for k, v in value.items()}
+    return value
+
+
 # ── HTML Resume Renderer (Idea A) ─────────────────────────────────────────────
 
 def render_resume_json_to_html(resume_data: dict) -> str:
     """Render the structured resume JSON payload to a beautiful, clean A4 print-ready HTML layout (Idea A)."""
+    resume_data = _html_escape_data(resume_data)
     # Parse header
     header_str = resume_data.get("header", "")
     parts = [p.strip() for p in header_str.split("|") if p.strip()]
@@ -65,6 +80,19 @@ def render_resume_json_to_html(resume_data: dict) -> str:
         </div>
         """
         
+    # Render soft skills block (only present when the source resume lists any)
+    soft_skills = [s for s in (resume_data.get("soft_skills") or []) if isinstance(s, str) and s.strip()]
+    if soft_skills:
+        soft_tags = "".join([f"<span class='skill-tag'>{skill}</span>" for skill in soft_skills])
+        skills_html += f"""
+        <div class="section">
+          <h2 class="section-title">Soft Skills</h2>
+          <div class="skills-grid">
+            {soft_tags}
+          </div>
+        </div>
+        """
+
     # Render experience block
     experience = resume_data.get("experience", [])
     exp_items_html = ""
@@ -454,6 +482,142 @@ def render_resume_json_to_html(resume_data: dict) -> str:
 
 # ── Resume Optimization ───────────────────────────────────────────────────────
 
+# ── Resume JSON normalisation (guards against malformed LLM output) ───────────
+
+_PLACEHOLDER_MARKERS = (
+    "project_name", "tech_stack", "description_text", "job_title", "company_name",
+    "start_date", "end_date", "john doe", "john.doe@email.com", "[skill]", "your name",
+)
+
+
+def _strip_brackets(text: str) -> str:
+    return re.sub(r"\s+", " ", text.replace("[", "").replace("]", "")).strip() if "\n" not in text else \
+        "\n".join(re.sub(r"[ \t]+", " ", ln.replace("[", "").replace("]", "")).strip() for ln in text.split("\n"))
+
+
+def _is_placeholder(text: str) -> bool:
+    low = text.lower()
+    return any(m in low for m in _PLACEHOLDER_MARKERS)
+
+
+def _as_text_list(value) -> list[str]:
+    """Coerce an LLM field into a flat list of non-empty strings."""
+    if isinstance(value, str):
+        value = [v for v in re.split(r"[,\n]", value)]
+    out = []
+    for item in value or []:
+        if isinstance(item, dict):
+            item = item.get("name") or item.get("skill") or ""
+        if isinstance(item, str) and item.strip():
+            out.append(item.strip())
+    return out
+
+
+def _format_experience_item(item) -> str:
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return ""
+    title = str(item.get("title") or item.get("role") or "").strip()
+    company = str(item.get("company") or item.get("employer") or "").strip()
+    dates = str(item.get("dates") or "").strip()
+    if not dates:
+        start, end = str(item.get("start") or "").strip(), str(item.get("end") or "").strip()
+        dates = "–".join(x for x in (start, end) if x)
+    bullets = item.get("bullets")
+    if not bullets:
+        desc = item.get("description") or ""
+        bullets = desc if isinstance(desc, list) else [ln for ln in str(desc).split("\n")]
+    bullets = [re.sub(r"^[•\-\*\s]+", "", str(b)).strip() for b in bullets]
+    head = " · ".join(x for x in (title, company, dates) if x)
+    return "\n".join([head] + [f"- {b}" for b in bullets if b]) if head else ""
+
+
+def _format_project_item(item) -> str:
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return ""
+    name = str(item.get("name") or item.get("title") or "").strip()
+    tech = item.get("technologies") or item.get("tech") or ""
+    tech = ", ".join(str(t) for t in tech) if isinstance(tech, list) else str(tech)
+    desc = item.get("description") or ""
+    desc = " ".join(str(d) for d in desc) if isinstance(desc, list) else str(desc)
+    head = f"{name} — {tech.strip()}" if name and tech.strip() else name
+    return f"{head}\n{desc.strip()}".strip() if head else ""
+
+
+def _format_education_item(item) -> str:
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return ""
+    parts = [str(item.get(k) or "").strip() for k in ("degree", "institution", "year")]
+    return " · ".join(p for p in parts if p)
+
+
+def _clean_entries(values, formatter) -> list[str]:
+    out = []
+    for item in values or []:
+        text = formatter(item)
+        text = _strip_brackets(text) if text else ""
+        if text and not _is_placeholder(text):
+            out.append(text)
+    return out
+
+
+def normalize_resume_data(data: dict, resume_analysis: dict) -> dict:
+    """
+    Turn whatever the LLM returned into the exact shape the renderers expect and
+    repair the obvious failure modes (dict entries, placeholders, brackets, a
+    wrong/missing name, empty sections that exist in the source resume).
+    """
+    data = data if isinstance(data, dict) else {}
+    ra = resume_analysis or {}
+
+    header = data.get("header")
+    header = header.strip() if isinstance(header, str) else ""
+    name = (ra.get("name") or "").strip()
+    parts = [p.strip() for p in header.split("|") if p.strip()]
+    if not parts or _is_placeholder(header):
+        parts = [x for x in (name, ra.get("email"), ra.get("phone"), ra.get("location"),
+                             ra.get("linkedin"), ra.get("portfolio")) if x]
+    elif name and name.lower() != parts[0].lower():
+        parts[0] = name          # the candidate's own name always wins
+    header = " | ".join(_strip_brackets(p) for p in parts)
+
+    summary = data.get("summary")
+    summary = _strip_brackets(summary) if isinstance(summary, str) else ""
+    if not summary or _is_placeholder(summary):
+        summary = ra.get("summary", "") or ""
+
+    skills, seen = [], set()
+    for sk in _as_text_list(data.get("skills")) or _as_text_list(ra.get("skills")):
+        sk = _strip_brackets(sk)
+        if sk and sk.lower() not in seen and not _is_placeholder(sk):
+            seen.add(sk.lower())
+            skills.append(sk)
+    soft = [s for s in (_strip_brackets(x) for x in _as_text_list(data.get("soft_skills"))) if s][:10]
+
+    experience = _clean_entries(data.get("experience"), _format_experience_item) or \
+        _clean_entries(ra.get("experience_structured") or ra.get("experience"), _format_experience_item)
+    projects = _clean_entries(data.get("projects"), _format_project_item) or \
+        _clean_entries(ra.get("projects_structured") or ra.get("projects"), _format_project_item)
+    education = _clean_entries(data.get("education"), _format_education_item) or \
+        _clean_entries(ra.get("education_structured") or ra.get("education"), _format_education_item)
+
+    return {
+        "header": header,
+        "summary": summary,
+        "skills": skills[:25],
+        "soft_skills": soft,
+        "experience": experience,
+        "projects": projects,
+        "education": education,
+    }
+
+
+
 def optimize_resume_raw(
     original_resume: str,
     job_desc: str,
@@ -476,7 +640,7 @@ def optimize_resume_raw(
         import app.services.analyzer as az
         resume_analysis = az.analyze_resume(original_resume)
 
-    llm = get_llm()
+    llm = get_llm(temperature=0.2)   # structured JSON output: keep it deterministic
     system_prompt = load_prompt("prompt_final_resume_generator.txt")
     system_prompt = system_prompt.replace("{{ JSON.stringify($json.job, null, 2) }}", json.dumps(job_analysis, indent=2))
     
@@ -571,28 +735,25 @@ def optimize_resume_raw(
     if user_memory:
         system_prompt += f"\n\nCRITICAL BACKGROUND CONTEXT ABOUT THE USER (HEED THIS ABOVE ALL ELSE):\n{user_memory}\n"
 
-    response = llm.invoke([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content="Generate the optimized resume JSON now.")
-    ])
+    resume_data = None
+    for attempt in range(2):
+        response = llm.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content="Generate the optimized resume JSON now. Output the JSON object only.")
+        ])
+        raw = response.content if isinstance(response.content, str) else str(response.content)
+        try:
+            parsed = json.loads(_clean_json_output(raw))
+            if not isinstance(parsed, dict):
+                raise ValueError("LLM returned a non-dictionary format.")
+            resume_data = parsed
+            break
+        except Exception as e:
+            print(f"Error parsing optimized resume JSON (attempt {attempt + 1}): {e}. Raw: {raw[:500]}")
 
-    cleaned_content = _clean_json_output(response.content)
-    try:
-        resume_data = json.loads(cleaned_content)
-        if not isinstance(resume_data, dict):
-            print(f"Warning: Generator LLM returned non-dict: {resume_data}")
-            raise ValueError("LLM returned a non-dictionary format.")
-    except Exception as e:
-        print(f"Error parsing optimized resume JSON: {e}. Raw: {response.content}")
-        # Robust fallback using existing details
-        resume_data = {
-            "header": f"{resume_analysis.get('name', 'Candidate')} | {resume_analysis.get('email', '')} | {resume_analysis.get('phone', '')} | {resume_analysis.get('location', '')}",
-            "summary": resume_analysis.get("summary", ""),
-            "skills": resume_analysis.get("skills", []),
-            "experience": resume_analysis.get("experience", []),
-            "projects": resume_analysis.get("projects", []),
-            "education": resume_analysis.get("education", [])
-        }
+    # Always normalise; if the LLM never produced valid JSON this rebuilds the
+    # resume from the candidate's own parsed data instead of showing garbage.
+    resume_data = normalize_resume_data(resume_data or {}, resume_analysis)
 
     return render_resume_json_to_html(resume_data), resume_data
 
@@ -696,7 +857,7 @@ def generate_cover_letter(
         import app.services.analyzer as az
         ats_results = az.run_ats_scoring(job_analysis, resume_analysis, job_desc, optimized_resume)
 
-    llm = get_llm()
+    llm = get_llm(temperature=0.4)
     system_prompt = load_prompt("prompt_cover_letter_generator.txt")
     system_prompt = system_prompt.replace('{{ JSON.stringify($node["Prepare Generation Payload"].json.job, null, 2) }}', json.dumps(job_analysis, indent=2))
     system_prompt = system_prompt.replace('{{ JSON.stringify($node["Prepare Generation Payload"].json.resume, null, 2) }}', json.dumps(resume_analysis, indent=2))
@@ -713,8 +874,10 @@ def generate_cover_letter(
 
     from datetime import datetime as _dt
 
-    content = response.content.strip()
-    paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
+    content = (response.content if isinstance(response.content, str) else str(response.content)).strip()
+    content = re.sub(r"^```[a-zA-Z]*\n|\n```$", "", content).strip()      # stray code fences
+    content = re.sub(r"\*\*|__", "", content)                             # stray markdown emphasis
+    paragraphs = [_html.escape(p.strip(), quote=False) for p in re.split(r"\n\s*\n", content) if p.strip()]
 
     candidate_name = resume_analysis.get('name', 'Candidate') if resume_analysis else 'Candidate'
     company_name = job_analysis.get('company', '') if job_analysis else ''
@@ -734,8 +897,11 @@ def generate_cover_letter(
 
     # Check if the last paragraph is a closing
     closing_text = "Sincerely,"
-    if paragraphs and any(word in paragraphs[-1].lower() for word in ['sincerely', 'regards', 'respectfully', 'best wishes']):
-        closing_text = paragraphs[-1]
+    # (a sign-off is short; keep only its first line — the signature name is added separately)
+    if paragraphs and len(paragraphs[-1]) < 120 and any(
+        word in paragraphs[-1].lower() for word in ['sincerely', 'regards', 'respectfully', 'best wishes']
+    ):
+        closing_text = paragraphs[-1].splitlines()[0].strip() or "Sincerely,"
         paragraphs = paragraphs[:-1]
 
     paragraphs_html = "".join([f'<p class="body-paragraph">{p}</p>' for p in paragraphs])
